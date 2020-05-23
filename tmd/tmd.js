@@ -18,6 +18,7 @@ export class TMD {
 
       object.primitives = [];
 
+      // TODO: Flatten all this out and just populate primitives, vertices, and normals separately using their offsets
       for (let i = 0; i < objectTable.primitivesCount; i++) {
         const primitiveData = primitiveStruct.createObject(arrayBuffer, totalOffset, true);
         object.primitives.push(new Primitive(primitiveData));
@@ -28,5 +29,9 @@ export class TMD {
       object.vertices = vertexStruct.createArray(arrayBuffer, objectTable.verticesStart + this.header.byteLength, objectTable.verticesCount, true);
       this.objects.push(object);
     })
+  }
+
+  packetDataForPrimitiveType(primitive, arrayBuffer) {
+
   }
 }
