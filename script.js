@@ -37,11 +37,8 @@ function drawTMD(tmd) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  
   camera.position.set(0, 0, 600);
   camera.lookAt(0, 0, 0);
-
-  
 
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
   scene.add(ambientLight);
@@ -51,13 +48,7 @@ function drawTMD(tmd) {
   directionalLight.position.set(1, 1, 1).normalize();
   scene.add(directionalLight);
 
-  var material = new THREE.MeshStandardMaterial({ vertexColors: true });
-  var geometry = new THREE.Geometry();
-
-  geometry.vertices = FlatNoTextureSolidConverter.GetVertices(tmd.objects[0]);
-  geometry.faces = FlatNoTextureSolidConverter.GetFace3(tmd.objects[0]);
-
-  mesh = new THREE.Mesh(geometry, material)
+  mesh = FlatNoTextureSolidConverter.GetMesh(tmd.objects[0]);
 
   scene.add(mesh);
   renderer.render(scene, camera);

@@ -1,21 +1,22 @@
-import { ThreeJSConverter } from './threejs.converter.js';
+import { ConversionUtil } from './conversion-util.js';
 
 export class FlatNoTextureSolidConverter {
 
-  static GetVertices(object) {
-    return object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
-  }
+  static GetMesh(object) {
+    var material = new THREE.MeshStandardMaterial({ vertexColors: true });
+    var geometry = new THREE.Geometry();
 
-  static GetFace3(object) {
-    return object.primitives.map(primitive => {
-      const normalIndex = primitive.packetData.normal0;
-      const sourceNormal = object.normals[normalIndex];
-      const normal = new THREE.Vector3(sourceNormal.x, -sourceNormal.y, sourceNormal.z);
-      const rawColor = ThreeJSConverter.CombineRGBBytes(primitive.packetData.red, primitive.packetData.green, primitive.packetData.blue);
+    geometry.vertices = object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
+    geometry.faces = object.primitives.map(primitive => {
+      const normal = ConversionUtil.GetNormalFromIndex(object, primitive.packetData.normal0)
+      const rawColor = ConversionUtil.CombineRGBBytes(primitive.packetData.red, primitive.packetData.green, primitive.packetData.blue);
       const color = new THREE.Color(rawColor);
       const face = new THREE.Face3(primitive.packetData.vertex0, primitive.packetData.vertex1, primitive.packetData.vertex2, normal, color);
       return face;
     });
+
+    return new THREE.Mesh(geometry, material)
   }
+  
 }
 
