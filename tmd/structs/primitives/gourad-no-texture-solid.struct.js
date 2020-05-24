@@ -1,6 +1,6 @@
-import Struct from "../../../lib/struct";
+import Struct from "../../../lib/struct.js";
 
-const gouradShadingFlatPigmentStruct = new Struct(
+export const gouradNoTextureSolidStruct = new Struct(
   Struct.Uint8('red'),
   Struct.Uint8('green'),
   Struct.Uint8('blue'),
@@ -12,5 +12,3 @@ const gouradShadingFlatPigmentStruct = new Struct(
   Struct.Uint16('normal2'),
   Struct.Uint16('vertex2')
 );
-
-export default gouradShadingFlatPigmentStruct;

@@ -1,6 +1,6 @@
-import Struct from "../../../lib/struct";
+import Struct from "../../../lib/struct.js";
 
-const flatShadingGradientPigmentStruct = new Struct(
+export const flatNoTextureGradientStruct = new Struct(
   Struct.Uint8('red0'),
   Struct.Uint8('green0'),
   Struct.Uint8('blue0'),
@@ -18,5 +18,3 @@ const flatShadingGradientPigmentStruct = new Struct(
   Struct.Uint16('vertex1'),
   Struct.Uint16('vertex2')
 );
-
-export default flatShadingGradientPigmentStruct;

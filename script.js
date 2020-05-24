@@ -1,8 +1,18 @@
 import { TMD } from "./tmd/tmd.js";
+import { FlatNoTextureSolidConverter } from './tmd/threejs-converters/flat-no-texture-solid.converter.js'
+
+let mesh;
+const renderer = new THREE.WebGLRenderer(); 
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.z = 400;
+
+let objectIndex;
 
 window.onload = () => {
   const parseButton = document.getElementById("parse");
   parseButton.onclick = onButtonClick;
+  //document.onkeyup = changeObject();
 }
 
 function onButtonClick() {
@@ -23,28 +33,41 @@ function onButtonClick() {
 }
 
 function drawTMD(tmd) {
-  var renderer = new THREE.WebGLRenderer();
+  
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 0, -1000);
+  
+  camera.position.set(0, 0, 600);
   camera.lookAt(0, 0, 0);
 
-  var scene = new THREE.Scene();
+  
 
-  var material = new THREE.LineBasicMaterial({ color: 0x0000ff });
+  var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
+  scene.add(ambientLight);
 
-  const vectors = [];
+  // Create directional light and add to scene.
+  var directionalLight = new THREE.DirectionalLight(0xffffff);
+  directionalLight.position.set(1, 1, 1).normalize();
+  scene.add(directionalLight);
 
-  tmd.objects[0].vertices.forEach(vertex => {
-    vectors.push(new THREE.Vector3(vertex.x, vertex.y, vertex.z));
-  });
+  var material = new THREE.MeshStandardMaterial({ vertexColors: true });
+  var geometry = new THREE.Geometry();
 
-  var geometry = new THREE.BufferGeometry().setFromPoints(vectors);
-  var line = new THREE.Line(geometry, material);
+  geometry.vertices = FlatNoTextureSolidConverter.GetVertices(tmd.objects[0]);
+  geometry.faces = FlatNoTextureSolidConverter.GetFace3(tmd.objects[0]);
 
-  scene.add(line);
+  mesh = new THREE.Mesh(geometry, material)
+
+  scene.add(mesh);
   renderer.render(scene, camera);
+
+  animate();
 }
 
+function animate() {
+  requestAnimationFrame(animate);
+  mesh.rotation.x += 0.005;
+  mesh.rotation.y += 0.01;
+  renderer.render(scene, camera);
+}

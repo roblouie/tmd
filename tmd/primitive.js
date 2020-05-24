@@ -1,9 +1,16 @@
+import { flatNoTextureSolidStruct } from './structs/primitives/flat-no-texture-solid.struct.js';
+import { flatNoTextureGradientStruct } from './structs/primitives/flat-no-texture-gradient.struct.js';
+import { gouradNoTextureSolidStruct } from './structs/primitives/gourad-no-texture-solid.struct.js';
+
 export class Primitive {
   constructor(primitiveData) {
     this.primitiveData = primitiveData;
 
     // convert word length to byte length to store packet data length in bytes
     this.packetDataLength = primitiveData.ilen * 4;
+
+    // total byte length of primitive with packet data
+    this.totalByteLength = primitiveData.byteLength + this.packetDataLength;
 
     // Parse flag info
     const lightCalculationFlagBitmask = 0b00000001;
@@ -46,7 +53,7 @@ export class Primitive {
     this.shading = (option & isGouradShadedFlagBitmask) >> 4 === 1 ? 'Gourad' : 'Flat';
   }
 
-  setPacketDataType() {
+  setPacketData(arrayBuffer) {
 
     // --- 3 Vertex Polygon with Light Source Calculation ---
     if (this.codeType === 'Polygon' && this.numberOfSides === 3 && this.isLightCalculated) {
@@ -54,16 +61,19 @@ export class Primitive {
       // Flat shading no texture solid color
       if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Solid') {
         this.packetDataType = '3_SIDED_FLAT_NO_TEXTURE_SOLID';
+        this.packetData = flatNoTextureSolidStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading no texture solid color
       else if (this.shading === 'Gourad' && !this.isTextured && this.noTextureColorMode === 'Solid') {
         this.packetDataType = '3_SIDED_GOURAD_NO_TEXTURE_SOLID';
+        this.packetData = gouradNoTextureSolidStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Flat shading no texture gradient color
       else if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Gradient') {
         this.packetDataType = '3_SIDED_FLAT_NO_TEXTURE_GRADIENT';
+        this.packetData = flatNoTextureGradientStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading no texture gradient color
