@@ -1,5 +1,7 @@
 import { TMD } from "./tmd/tmd.js";
-import { FlatNoTextureSolidConverter } from './tmd/threejs-converters/flat-no-texture-solid.converter.js'
+import { FlatNoTextureSolidConverter } from './tmd/threejs-converters/primitives/flat-no-texture-solid.converter.js'
+import { GouradNoTextureSolidConverter } from './tmd/threejs-converters/primitives/gourad-no-texture-solid.converter.js';
+import { VRAM } from "./vram/vram.js";
 
 let mesh;
 const renderer = new THREE.WebGLRenderer(); 
@@ -12,7 +14,27 @@ let objectIndex;
 window.onload = () => {
   const parseButton = document.getElementById("parse");
   parseButton.onclick = onButtonClick;
+
+  const vramParseButton = document.getElementById("vram-parse");
+  vramParseButton.onclick = onVramParse;
+
   //document.onkeyup = changeObject();
+}
+
+function onVramParse() {
+  const fileInput = document.getElementById("vram-file-input");
+
+  const files = fileInput.files;
+
+  const reader = new FileReader();
+
+  reader.onload = function () {
+    const vram = VRAM.fromBeetlePSXSaveState(reader.result);
+    const test = vram.getClutColors(0, 480, 4);
+    console.log(test);
+  }
+
+  reader.readAsArrayBuffer(files[0]);
 }
 
 function onButtonClick() {
@@ -48,7 +70,7 @@ function drawTMD(tmd) {
   directionalLight.position.set(1, 1, 1).normalize();
   scene.add(directionalLight);
 
-  mesh = FlatNoTextureSolidConverter.GetMesh(tmd.objects[0]);
+  mesh = FlatNoTextureSolidConverter.GetMesh(tmd.objects[1]);
 
   scene.add(mesh);
   renderer.render(scene, camera);

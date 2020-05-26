@@ -1,6 +1,7 @@
 import { flatNoTextureSolidStruct } from './structs/primitives/flat-no-texture-solid.struct.js';
 import { flatNoTextureGradientStruct } from './structs/primitives/flat-no-texture-gradient.struct.js';
 import { gouradNoTextureSolidStruct } from './structs/primitives/gourad-no-texture-solid.struct.js';
+import flatTextured from './structs/primitives/flat-textured.js';
 
 export class Primitive {
   constructor(primitiveData) {
@@ -53,6 +54,76 @@ export class Primitive {
     this.shading = (option & isGouradShadedFlagBitmask) >> 4 === 1 ? 'Gourad' : 'Flat';
   }
 
+  // Texture helpers, consider moving into packet data types or something...not sure these belong direclty in primitive
+  get textureCLUTXPosition() {
+    if (this.isTextured && this.packetData) {
+      return (this.packetData.cba & 0b1111111111) << 4;
+    }
+  }
+
+  getTextureXYPositionInVRAM() {
+    if (this.isTextured && this.packetData) {
+      if (this.texturePage < 16) {
+        return { 
+          x: this.texturePage * 64,
+          y: 0
+        }
+      } else {
+        return {
+          x: (this.texturePage - 16) * 64,
+          y: 256
+        }
+      }
+    }
+  }
+
+  get textureCLUTYPosition() {
+    if (this.isTextured && this.packetData) {
+      return (this.packetData.cba & 0b0111111111000000) >> 6;
+    }
+  }
+
+  get texturePage() {
+    if (this.isTextured && this.packetData) {
+      return this.packetData.tsb & 0b0000000000011111;
+    }
+  }
+
+  get textureSemiTransparencyMethod() {
+    if (this.isTextured && this.packetData) {
+      const method = this.packetData.tsb & 0b0000000001100000;
+
+      switch (method) {
+        case 0: 
+          return '50 % background + 50 % polygon';
+        case 1:
+          return '100 % background + 100 % polygon';
+        case 2: 
+          return '2 - 100 % background - 100 % polygon';
+        case 3:
+          return '100 % background + 25 % polygon';
+      }
+    }
+  }
+
+  get textureColorMode() {
+    if (this.isTextured && this.packetData) {
+      const colorMore = this.packetData.tsb & 0b0000000001100000;
+      if (colorMode === 0) {
+        return '4-bit'
+      }
+
+      if (colorMode === 1) {
+        return '8-bit';
+      }
+
+      if (colorMore === 2) {
+        return '15-bit';
+      }
+    }
+  }
+  // End texture helpers
+
   setPacketData(arrayBuffer) {
 
     // --- 3 Vertex Polygon with Light Source Calculation ---
@@ -84,6 +155,7 @@ export class Primitive {
       // Flat shading texture no color
       else if (this.shading === 'Flat' && this.isTextured) {
         this.packetDataType = '3_SIDED_FLAT_TEXTURE';
+        this.packetData = flatTextured.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading texture no color
