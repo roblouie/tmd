@@ -23,11 +23,11 @@ export class VRAM {
   }
 
   getTextureImageData(bitsPerPixel, texturePage, clutX, clutY) {
-    const texturePageData = this.getTextureImageData(texturePage);
+    const texturePageData = this.getTexturePageData(texturePage);
 
     if (bitsPerPixel === 4) {
       const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
-      this.getFourBitTexture(texturePageData, clutColors);
+      return this.getFourBitTexture(texturePageData, clutColors);
     }
   }
 
@@ -44,23 +44,54 @@ export class VRAM {
     }
 
     const texturePageBytes = new Uint8Array(VRAM.TEXTURE_PAGE_BYTE_WIDTH * VRAM.TEXTURE_PAGE_BYTE_HEIGHT);
+    const dataView = new DataView(this.arrayBuffer);
+
     let dataIndex = xPos + yPos * VRAM.TEXTURE_PAGE_BYTE_WIDTH;
     let currentRow = 1;
     
     for (let i = 0; i < texturePageBytes.length; i++) {
-      if (i === (VRAM.TEXTURE_PAGE_BYTE_WIDTH * currentRow)) {
-        dataIndex += VRAM.TEXTURE_PAGE_BYTE_WIDTH;
+      texturePageBytes[i] = dataView.getUint8(dataIndex, true);
+      dataIndex++;
+
+      if (i === (VRAM.TEXTURE_PAGE_BYTE_WIDTH * currentRow - 1)) {
+        dataIndex += VRAM.VRAM_BYTE_WIDTH - VRAM.TEXTURE_PAGE_BYTE_WIDTH;
         currentRow++;
       }
 
-      texturePageBytes[i] = this.arrayBuffer[dataIndex];
     }
 
     return texturePageBytes;
   }
 
   getFourBitTexture(texturePageData, clutColors) {
-    console.log(clutData);
+    const imageData = new ImageData(VRAM.TEXTURE_PAGE_NATIVE_WIDTH * 4, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+
+    let byteIndex = 0;
+
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const currentByte = texturePageData[byteIndex];
+      const currentNibble = (i / 4) % 2;
+
+      let paletteIndex;
+
+      if (currentNibble === 0) {
+        paletteIndex = currentByte & 0xF; // get first nibble from byte value
+      } else {
+        paletteIndex = currentByte >> 4;  // get second nibble from byte value
+      }
+
+      const color = clutColors[paletteIndex];
+      imageData.data[i] = color.red;
+      imageData.data[i + 1] = color.green;
+      imageData.data[i + 2] = color.blue;
+      imageData.data[i + 3] = 255;
+
+      if (currentNibble === 1) {
+        byteIndex++;
+      }
+    }
+
+    return imageData;
   }
 
   getClutColors(clutX, clutY, bitsPerPixel) {

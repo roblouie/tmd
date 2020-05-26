@@ -30,8 +30,10 @@ function onVramParse() {
 
   reader.onload = function () {
     const vram = VRAM.fromBeetlePSXSaveState(reader.result);
-    const test = vram.getClutColors(0, 480, 4);
+    const test = vram.getTextureImageData(4, 10, 0, 480);
     console.log(test);
+    const canvasContext = document.querySelector('#texture-canvas').getContext('2d');
+    canvasContext.putImageData(test, 0, 0);
   }
 
   reader.readAsArrayBuffer(files[0]);
