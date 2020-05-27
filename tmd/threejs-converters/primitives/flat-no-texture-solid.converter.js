@@ -16,7 +16,7 @@ export const FlatNoTextureSolidConverter = {
       return new THREE.Face3(primitive.packetData.vertex0, primitive.packetData.vertex1, primitive.packetData.vertex2, normal, color, materialIndex);
     });
 
-    return new THREE.Mesh(geometry, conversionUtil.multiMaterial);
+    return new THREE.Mesh(geometry, conversionUtil.materials);
   }
   
 }

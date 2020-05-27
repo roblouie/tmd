@@ -1,8 +1,8 @@
 export const conversionUtil = {
-  multiMaterial: new THREE.MultiMaterial([
+  materials: [
     new THREE.MeshStandardMaterial({ vertexColors: true }), 
     new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.5 })
-  ]),
+  ],
 
   getMaterialIndex(primitive) {
     return primitive.isTranslucent ? 1 : 0;

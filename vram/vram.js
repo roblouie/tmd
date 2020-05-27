@@ -22,12 +22,26 @@ export class VRAM {
     return new VRAM(arrayBuffer.slice(VRAM.BEETLE_PSX_VRAM_OFFSET, endOfVRAM));
   }
 
-  getTextureImageData(bitsPerPixel, texturePage, clutX, clutY) {
+  getTexturePageImageData(bitsPerPixel, texturePage, clutX, clutY) {
     const texturePageData = this.getTexturePageData(texturePage);
 
     if (bitsPerPixel === 4) {
       const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
       return this.getFourBitTexture(texturePageData, clutColors);
+    }
+
+    if (bitsPerPixel === 8) {
+      const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
+      return this.getEightBitTexture(texturePageData, clutColors);
+    }
+
+    if (bitsPerPixel === 16) {
+      return this.getSixteenBitTexture(texturePageData);
+    }
+
+    if (bitsPerPixel === 24) {
+      console.log('Not yet supported');
+      return null;
     }
   }
 
@@ -57,7 +71,6 @@ export class VRAM {
         dataIndex += VRAM.VRAM_BYTE_WIDTH - VRAM.TEXTURE_PAGE_BYTE_WIDTH;
         currentRow++;
       }
-
     }
 
     return texturePageBytes;
@@ -89,6 +102,59 @@ export class VRAM {
       if (currentNibble === 1) {
         byteIndex++;
       }
+    }
+
+    return imageData;
+  }
+
+  getEightBitTexture(texturePageData, clutColors) {
+    const imageData = new ImageData(VRAM.TEXTURE_PAGE_BYTE_WIDTH, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+
+    let byteIndex = 0;
+
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const paletteIndex = texturePageData[byteIndex]
+      const color = clutColors[paletteIndex];
+      imageData.data[i] = color.red;
+      imageData.data[i + 1] = color.green;
+      imageData.data[i + 2] = color.blue;
+      imageData.data[i + 3] = 255;
+
+      byteIndex++;
+    }
+
+    return imageData;
+  }
+
+  getSixteenBitTexture(texturePageData) {
+    const imageData = new ImageData(VRAM.TEXTURE_PAGE_NATIVE_WIDTH, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+    const sixteenBitView = new Uint16Array(texturePageData.buffer);
+    let colorIndex = 0;
+
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const color = this.getRGBFrom16Bit(sixteenBitView[colorIndex]);
+      imageData.data[i] = color.red;
+      imageData.data[i + 1] = color.green;
+      imageData.data[i + 2] = color.blue;
+      imageData.data[i + 3] = 255;
+
+      colorIndex++;
+    }
+
+    return imageData;
+  }
+
+  getTwentyFourBitTexture(texturePageData) {
+    const imageData = new ImageData(VRAM.TEXTURE_PAGE_BYTE_WIDTH / 3, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+    let byteIndex = 0;
+
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      imageData.data[i] = texturePageData[byteIndex];
+      imageData.data[i + 1] = texturePageData[byteIndex + 1];
+      imageData.data[i + 2] = texturePageData[byteIndex + 2];
+      imageData.data[i + 3] = 255;
+
+      byteIndex += 3;
     }
 
     return imageData;
