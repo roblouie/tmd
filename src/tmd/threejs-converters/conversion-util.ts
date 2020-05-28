@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+import { NormalData } from '../structs/normal';
+
 export const conversionUtil = {
   materials: [
     new THREE.MeshStandardMaterial({ vertexColors: true }), 
@@ -16,8 +19,8 @@ export const conversionUtil = {
     return object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
   },
 
-  getNormalFromIndex(object, index) {
-    const normal = object.normals[index];
+  getThreeJSNormalFromIndex(normals: NormalData[], index: number) {
+    const normal = normals[index];
     return new THREE.Vector3(normal.x, -normal.y, normal.z);
   },
 }

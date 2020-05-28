@@ -1,4 +1,15 @@
-import Struct from "../../../lib/struct.js";
+import { Struct, StructObject } from '@rlouie/structjs';
+
+export interface FlatNoTextureGradientStruct {
+  red0: number;
+  green0: number;
+  blue0: number;
+  mode: number;
+  red1: number;
+  green1: number;
+  green2: number;
+
+}
 
 export const flatNoTextureGradientStruct = new Struct(
   Struct.Uint8('red0'),

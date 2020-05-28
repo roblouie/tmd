@@ -1,4 +1,15 @@
-import Struct from "../../../lib/struct.js";
+import { Struct } from '@rlouie/structjs';
+
+export interface FlatNoTextureSolidData {
+  red: number;
+  green: number;
+  blue: number;
+  mode: number;
+  normal0: number;
+  vertex0: number;
+  vertex1: number;
+  vertex2: number;
+}
 
 export const flatNoTextureSolidStruct = new Struct(
   Struct.Uint8('red'),

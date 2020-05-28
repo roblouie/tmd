@@ -1,4 +1,17 @@
-import Struct from "../../../lib/struct.js";
+import { Struct, StructObject } from '@rlouie/structjs';
+
+export interface GouradNoTextureSolidData extends StructObject {
+  red: number,
+  green: number,
+  blue: number,
+  mode: number,
+  normal0: number,
+  vertex0: number,
+  normal1: number,
+  vertex1: number,
+  normal2: number,
+  vertex2: number,
+}
 
 export const gouradNoTextureSolidStruct = new Struct(
   Struct.Uint8('red'),

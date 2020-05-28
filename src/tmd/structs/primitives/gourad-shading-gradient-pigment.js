@@ -1,4 +1,4 @@
-import Struct from "../../../lib/struct";
+import { Struct } from '@rlouie/structjs';
 
 const gouradShadingGradientPigmentStruct = new Struct(
   Struct.Uint8('red0'),

@@ -1,10 +1,31 @@
-import { flatNoTextureSolidStruct } from './structs/primitives/flat-no-texture-solid.struct.js';
-import { flatNoTextureGradientStruct } from './structs/primitives/flat-no-texture-gradient.struct.js';
-import { gouradNoTextureSolidStruct } from './structs/primitives/gourad-no-texture-solid.struct.js';
-import flatTextured from './structs/primitives/flat-textured.js';
+import { flatNoTextureSolidStruct } from './structs/primitives/flat-no-texture-solid.struct';
+import { flatNoTextureGradientStruct } from './structs/primitives/flat-no-texture-gradient.struct';
+import { gouradNoTextureSolidStruct } from './structs/primitives/gourad-no-texture-solid.struct';
+import { flatTexturedStruct, FlatTexturedData } from './structs/primitives/flat-textured';
+import { PrimitiveData } from './structs/primitive';
+import { PrimitiveType } from './primitive-type.enum';
+import { gouradTexturedStruct, GouradTexturedData } from './structs/primitives/gourad-textured';
 
 export class Primitive {
-  constructor(primitiveData) {
+  primitiveData: PrimitiveData;
+  packetDataLength: number;
+  totalByteLength: number;
+
+  isLightCalculated: boolean;
+  faces: number;
+  noTextureColorMode: string;
+  codeType: string;
+
+  isLightCalculatedAtTexture: boolean;
+  isTranslucent: boolean;
+  isTextured: boolean;
+  numberOfSides: number;
+  shading: string;
+
+  packetData: any;
+  packetDataType: PrimitiveType | string;
+
+  constructor(primitiveData: PrimitiveData) {
     this.primitiveData = primitiveData;
 
     // convert word length to byte length to store packet data length in bytes
@@ -55,12 +76,6 @@ export class Primitive {
   }
 
   // Texture helpers, consider moving into packet data types or something...not sure these belong direclty in primitive
-  get textureCLUTXPosition() {
-    if (this.isTextured && this.packetData) {
-      return (this.packetData.cba & 0b1111111111) << 4;
-    }
-  }
-
   getTextureXYPositionInVRAM() {
     if (this.isTextured && this.packetData) {
       if (this.texturePage < 16) {
@@ -74,6 +89,12 @@ export class Primitive {
           y: 256
         }
       }
+    }
+  }
+
+  get textureCLUTXPosition() {
+    if (this.isTextured && this.packetData) {
+      return (this.packetData.cba & 0b0000000000111111) << 4;
     }
   }
 
@@ -91,7 +112,7 @@ export class Primitive {
 
   get textureSemiTransparencyMethod() {
     if (this.isTextured && this.packetData) {
-      const method = this.packetData.tsb & 0b0000000001100000;
+      const method = (this.packetData.tsb & 0b0000000001100000) >> 5;
 
       switch (method) {
         case 0: 
@@ -99,45 +120,45 @@ export class Primitive {
         case 1:
           return '100 % background + 100 % polygon';
         case 2: 
-          return '2 - 100 % background - 100 % polygon';
+          return '100 % background - 100 % polygon';
         case 3:
           return '100 % background + 25 % polygon';
       }
     }
   }
 
-  get textureColorMode() {
+  get textureBitsPerPixel() {
     if (this.isTextured && this.packetData) {
-      const colorMore = this.packetData.tsb & 0b0000000001100000;
+      const colorMode = (this.packetData.tsb & 0b0000000110000000) >> 7;
       if (colorMode === 0) {
-        return '4-bit'
+        return 4;
       }
 
       if (colorMode === 1) {
-        return '8-bit';
+        return 8;
       }
 
-      if (colorMore === 2) {
-        return '15-bit';
+      if (colorMode === 2) {
+        return 16;
       }
     }
   }
   // End texture helpers
 
-  setPacketData(arrayBuffer) {
+  setPacketData(arrayBuffer: ArrayBuffer) {
 
     // --- 3 Vertex Polygon with Light Source Calculation ---
     if (this.codeType === 'Polygon' && this.numberOfSides === 3 && this.isLightCalculated) {
       
       // Flat shading no texture solid color
       if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Solid') {
-        this.packetDataType = '3_SIDED_FLAT_NO_TEXTURE_SOLID';
+        this.packetDataType = PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_SOLID;
         this.packetData = flatNoTextureSolidStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading no texture solid color
       else if (this.shading === 'Gourad' && !this.isTextured && this.noTextureColorMode === 'Solid') {
-        this.packetDataType = '3_SIDED_GOURAD_NO_TEXTURE_SOLID';
+        this.packetDataType = PrimitiveType.THREE_SIDED_GOURAD_NO_TEXTURE_SOLID;
         this.packetData = gouradNoTextureSolidStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
@@ -154,13 +175,14 @@ export class Primitive {
 
       // Flat shading texture no color
       else if (this.shading === 'Flat' && this.isTextured) {
-        this.packetDataType = '3_SIDED_FLAT_TEXTURE';
-        this.packetData = flatTextured.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
+        this.packetDataType = PrimitiveType.THREE_SIDED_FLAT_TEXTURE;
+        this.packetData = flatTexturedStruct.createObject<FlatTexturedData>(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading texture no color
       else if (this.shading === 'Gourad' && this.isTextured) {
-        this.packetDataType = '3_SIDED_GOURAD_TEXTURE';
+        this.packetDataType = PrimitiveType.THREE_SIDED_GOURAD_TEXTURE;
+        this.packetData = gouradTexturedStruct.createObject<GouradTexturedData>(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
 

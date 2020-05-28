@@ -1,4 +1,4 @@
-import Struct from '../../lib/struct.js'
+import { Struct } from '@rlouie/structjs'
 
 const vertexStruct = new Struct(
   Struct.Int16('x'),

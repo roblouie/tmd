@@ -13,7 +13,9 @@ export class VRAM {
   static TEXTURE_PAGE_BYTE_WIDTH = 128;
   static TEXTURE_PAGE_BYTE_HEIGHT = 256;
 
-  constructor(vramArrayBuffer) {
+  arrayBuffer: ArrayBuffer;
+
+  constructor(vramArrayBuffer: ArrayBuffer) {
     this.arrayBuffer = vramArrayBuffer;
   }
 
@@ -64,7 +66,7 @@ export class VRAM {
     let currentRow = 1;
     
     for (let i = 0; i < texturePageBytes.length; i++) {
-      texturePageBytes[i] = dataView.getUint8(dataIndex, true);
+      texturePageBytes[i] = dataView.getUint8(dataIndex);
       dataIndex++;
 
       if (i === (VRAM.TEXTURE_PAGE_BYTE_WIDTH * currentRow - 1)) {
