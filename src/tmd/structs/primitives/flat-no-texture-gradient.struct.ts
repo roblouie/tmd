@@ -1,4 +1,4 @@
-import { Struct, StructObject } from '@rlouie/structjs';
+import { Struct, StructData } from '@binary-files/structjs';
 
 export interface FlatNoTextureGradientStruct {
   red0: number;

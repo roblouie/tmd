@@ -1,6 +1,6 @@
-import { Struct, StructObject } from '@rlouie/structjs'
+import { Struct, StructData } from '@binary-files/structjs'
 
-export interface HeaderData extends StructObject {
+export interface HeaderData extends StructData {
   id: number;
   flags: number;
   numberOfObjects: number;

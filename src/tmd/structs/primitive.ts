@@ -1,6 +1,6 @@
-import { Struct, StructObject } from '@rlouie/structjs';
+import { Struct, StructData } from '@binary-files/structjs';
 
-export interface PrimitiveData extends StructObject {
+export interface PrimitiveData extends StructData {
   olen: number,
   ilen: number,
   flag: number,

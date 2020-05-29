@@ -1,0 +1,7 @@
+export enum TIMPixelMode {
+  FOUR_BIT_CLUT,
+  EIGHT_BIT_CLUT,
+  FIFTEEN_BIT_CLUT,
+  TWENTY_FOUR_BIT_CLUT,
+  MIXED
+}

@@ -1,4 +1,4 @@
-import { Struct } from '@rlouie/structjs';
+import { Struct } from '@binary-files/structjs';
 
 export default new Struct(
   Struct.Uint8('u0'),

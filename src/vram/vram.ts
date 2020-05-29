@@ -19,25 +19,29 @@ export class VRAM {
     this.arrayBuffer = vramArrayBuffer;
   }
 
-  static fromBeetlePSXSaveState(arrayBuffer) {
+  static fromBeetlePSXSaveState(arrayBuffer: ArrayBuffer): VRAM {
     const endOfVRAM = VRAM.BEETLE_PSX_VRAM_OFFSET + VRAM.VRAM_BYTE_WIDTH * VRAM.VRAM_BYTE_HEIGHT;
     return new VRAM(arrayBuffer.slice(VRAM.BEETLE_PSX_VRAM_OFFSET, endOfVRAM));
   }
 
-  getTexturePageImageData(bitsPerPixel, texturePage, clutX, clutY) {
-    const texturePageData = this.getTexturePageData(texturePage);
+  // TODO: Refactore "texture overrun" logic to be less bad.
 
-    if (bitsPerPixel === 4) {
-      const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
-      return this.getFourBitTexture(texturePageData, clutColors);
-    }
+  getTexturePageImageData(bitsPerPixel: number, texturePage: number, clutX: number, clutY: number) {
+    
+    // TODO: Add four bit textrure page data fetcher and reenable
+    // if (bitsPerPixel === 4) {
+    //   const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
+    //   return this.getFourBitTexture(texturePageData, clutColors);
+    // }
 
     if (bitsPerPixel === 8) {
+      const texturePageData = this.getEightBitTexturePageData(texturePage);
       const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
       return this.getEightBitTexture(texturePageData, clutColors);
     }
 
     if (bitsPerPixel === 16) {
+      const texturePageData = this.getSixteenBitTexturePageData(texturePage);
       return this.getSixteenBitTexture(texturePageData);
     }
 
@@ -47,7 +51,45 @@ export class VRAM {
     }
   }
 
-  getTexturePageData(texturePage) {
+  getEightBitTexturePageData(texturePage) {
+    let xPos;
+    let yPos;
+
+    if (texturePage < 16) {
+      xPos = texturePage * 128;
+      yPos = 0;
+    } else {
+      xPos = (texturePage - 16) * 128;
+      yPos = 256;
+    }
+
+    // For 8-bit textures the playstation can "overread" into the next texture page. To allow for this we need to grab
+    // two texture pages if the selected page isn't 15 or 31, as those are the ends of the tpage rows and can't be overread.
+    let nextPageMultiplier = 1;
+    if (texturePage !== 15 && texturePage !== 31) {
+      nextPageMultiplier = 2;
+    }
+
+    const texturePageBytes = new Uint8Array(VRAM.TEXTURE_PAGE_BYTE_WIDTH * VRAM.TEXTURE_PAGE_BYTE_HEIGHT * nextPageMultiplier);
+    const dataView = new DataView(this.arrayBuffer);
+
+    let dataIndex = xPos + yPos * VRAM.VRAM_BYTE_WIDTH;
+    let currentRow = 1;
+
+    for (let i = 0; i < texturePageBytes.length; i++) {
+      texturePageBytes[i] = dataView.getUint8(dataIndex);
+      dataIndex++;
+
+      if (i === (VRAM.TEXTURE_PAGE_BYTE_WIDTH * currentRow * nextPageMultiplier - 1)) {
+        dataIndex += VRAM.VRAM_BYTE_WIDTH - VRAM.TEXTURE_PAGE_BYTE_WIDTH * nextPageMultiplier;
+        currentRow++;
+      }
+    }
+    console.log(texturePageBytes.length);
+    return texturePageBytes;
+  }
+
+  getSixteenBitTexturePageData(texturePage) {
     let xPos;
     let yPos;
 
@@ -110,7 +152,7 @@ export class VRAM {
   }
 
   getEightBitTexture(texturePageData, clutColors) {
-    const imageData = new ImageData(VRAM.TEXTURE_PAGE_BYTE_WIDTH, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+    const imageData = new ImageData(VRAM.TEXTURE_PAGE_BYTE_WIDTH * 2, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
 
     let byteIndex = 0;
 

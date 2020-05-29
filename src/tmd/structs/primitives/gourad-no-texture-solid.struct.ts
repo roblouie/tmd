@@ -1,6 +1,6 @@
-import { Struct, StructObject } from '@rlouie/structjs';
+import { Struct, StructData } from '@binary-files/structjs';
 
-export interface GouradNoTextureSolidData extends StructObject {
+export interface GouradNoTextureSolidData extends StructData {
   red: number,
   green: number,
   blue: number,

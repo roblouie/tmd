@@ -1,6 +1,6 @@
-import { Struct, StructObject } from '@rlouie/structjs';
+import { Struct, StructData } from '@binary-files/structjs';
 
-export interface FlatTexturedData extends StructObject {
+export interface FlatTexturedData extends StructData {
   u0: number;
   v0: number;
   cba: number;

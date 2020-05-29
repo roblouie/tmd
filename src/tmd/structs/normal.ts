@@ -1,6 +1,6 @@
-import { Struct, StructObject } from '@rlouie/structjs'
+import { Struct, StructData } from '@binary-files/structjs'
 
-export interface NormalData extends StructObject {
+export interface NormalData extends StructData {
   x: number;
   y: number;
   z: number;
