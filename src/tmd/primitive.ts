@@ -5,6 +5,8 @@ import { flatTexturedStruct, FlatTexturedData } from './structs/primitives/flat-
 import { PrimitiveData } from './structs/primitive';
 import { PrimitiveType } from './primitive-type.enum';
 import { gouradTexturedStruct, GouradTexturedData } from './structs/primitives/gourad-textured';
+import { lineSolidStruct, LineSolidData } from './structs/primitives/lines/line-solid.struct';
+import { lineGradientStruct, LineGradientData } from './structs/primitives/lines/line-gradient';
 
 export class Primitive {
   primitiveData: PrimitiveData;
@@ -13,8 +15,8 @@ export class Primitive {
 
   isLightCalculated: boolean;
   faces: number;
-  noTextureColorMode: string;
-  codeType: string;
+  noTextureColorMode: 'Solid' | 'Gradient';
+  codeType: 'Polygon' | 'Line' | 'Sprite';
 
   isLightCalculatedAtTexture: boolean;
   isTranslucent: boolean;
@@ -41,7 +43,7 @@ export class Primitive {
     
     this.isLightCalculated = (primitiveData.flag & lightCalculationFlagBitmask) === 0;
     this.faces = ((primitiveData.flag & polygonFaceCountFlagBitmask) >> 1) + 1;
-    this.noTextureColorMode = (primitiveData.flag & polygonColorFlagBitmask) >> 2 === 1 ? 'Gradiation' : 'Solid';
+    this.noTextureColorMode = (primitiveData.flag & polygonColorFlagBitmask) >> 2 === 1 ? 'Gradient' : 'Solid';
 
     // Parse code info
     const codeBitmask = 0b11100000;
@@ -271,9 +273,16 @@ export class Primitive {
     // --- Straight Line ---
     } else if (this.codeType === 'Line') {
       // No Gradient
+      if (this.noTextureColorMode === 'Solid') {
+        this.packetDataType = PrimitiveType.LINE_SOLID;
+        this.packetData = lineSolidStruct.createObject<LineSolidData>(arrayBuffer, this.primitiveData.nextOffset, true);
+      }
 
       // Gradient
-
+      else if (this.noTextureColorMode === 'Gradient') {
+        this.packetDataType = PrimitiveType.LINE_GRADIENT;
+        this.packetData = lineGradientStruct.createObject<LineGradientData>(arrayBuffer, this.primitiveData.nextOffset, true);
+      }
     // --- 3 Dimensional Sprite ---
     } else if (this.codeType === 'Sprite') {
       // Unknown, this changes how the options work though, so possible refactor to options when type is sprite

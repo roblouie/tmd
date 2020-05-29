@@ -5,6 +5,7 @@ import { VRAM } from "./vram/vram";
 import { TMDToThreeJS } from './tmd/threejs-converters/tmd-to-threejs';
 import { saveFile } from '@binary-files/save-file';
 import { TIM } from './tim/tim';
+import { timLoader } from './tim/tim-loader';
 
 let mesh;
 //THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
@@ -18,18 +19,32 @@ let textureImageData;
 let vram;
 
 window.onload = async () => {
-  // const parseButton = document.getElementById("parse");
-  // parseButton.onclick = onButtonClick;
+  const parseButton = document.getElementById("parse");
+  parseButton.onclick = onButtonClick;
 
   // const vramParseButton = document.getElementById("vram-parse");
   // vramParseButton.onclick = onVramParse;
 
   //document.onkeyup = changeObject();
-  const timData = await openFile('assets/ACASTLE.TIM');
-  const test = new TIM(timData);
-  const test2 = test.createImageData();
+  const timData = await openFile('assets/DINO.TIM');
+  const tims = timLoader.getTIMsFromTIMFile(timData);
   const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
-  canvasContext.putImageData(test2, 0, 0);
+
+  const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
+
+  tims.forEach(tim => {
+    const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
+    const imageData = tim.createImageData();
+    canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
+  });
+
+  console.log(tims[0]);
+
+  const tmdData = await openFile('assets/vibribbon-game.PAK');
+  const tmd = new TMD(tmdData, 0x13118);
+  drawTMD(tmd);
+  //const test2 = test[3].createImageData();
+  
 }
 
 function onVramParse() {

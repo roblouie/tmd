@@ -12,20 +12,22 @@ export interface TMDObject {
 }
 
 export class TMD {
+  static FileID = 0x00000041;
+
   header: HeaderData;
   objectInfos: ObjectTableData[];
   objects: TMDObject[];
 
-  constructor(arrayBuffer: ArrayBuffer) {
-    this.header = headerStruct.createObject<HeaderData>(arrayBuffer, 0, true);
-    this.objectInfos = objectTableStruct.createArray<ObjectTableData>(arrayBuffer, headerStruct.byteLength, this.header.numberOfObjects, true);
+  constructor(arrayBuffer: ArrayBuffer, startOffset = 0) {
+    this.header = headerStruct.createObject<HeaderData>(arrayBuffer, startOffset, true);
+    this.objectInfos = objectTableStruct.createArray<ObjectTableData>(arrayBuffer, this.header.nextOffset, this.header.numberOfObjects, true);
     this.objects = [];
 
     this.objectInfos.forEach(objectInfo => {
       const object: TMDObject = {
         primitives: this.getPrimitives(objectInfo, arrayBuffer),
-        vertices: vertexStruct.createArray(arrayBuffer, objectInfo.verticesStart + this.header.byteLength, objectInfo.verticesCount, true),
-        normals: normalStruct.createArray(arrayBuffer, objectInfo.normalsStart + this.header.byteLength, objectInfo.normalsCount, true)
+        vertices: vertexStruct.createArray(arrayBuffer, objectInfo.verticesStart + this.header.nextOffset, objectInfo.verticesCount, true),
+        normals: normalStruct.createArray(arrayBuffer, objectInfo.normalsStart + this.header.nextOffset, objectInfo.normalsCount, true)
       };
 
       this.objects.push(object);
@@ -34,7 +36,7 @@ export class TMD {
 
   getPrimitives(object: ObjectTableData, arrayBuffer: ArrayBuffer) {
     const objectPrimitives = [];
-    let offset = this.header.byteLength + object.primitivesStart;
+    let offset = this.header.nextOffset + object.primitivesStart;
 
     for (let i = 0; i < object.primitivesCount; i++) {
       const primitiveData = primitiveStruct.createObject<PrimitiveData>(arrayBuffer, offset, true);
