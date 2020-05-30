@@ -11,11 +11,19 @@ import { GouradNoTextureSolidConverter } from "./primitives/gourad-no-texture-so
 import { GouradTexturedConverter } from "./primitives/gourad-textured.converter";
 export class TMDToThreeJS {
 
-  convertWithTMDAndVRAM(tmd: TMD, vram: VRAM): THREE.Mesh[] {
+  convertWithTMDAndVRAM(tmd: TMD, vram: VRAM) {
     return tmd.objects.map(object => this.convertObject(object, vram))
   }
 
-  private convertObject(object: TMDObject, vram: VRAM): THREE.Mesh {
+  // This should likely be refactored to not return a mesh but rather the geometry and the material array inside an object.
+  // That would allow lines to also be sent out in a nicer way.
+  private convertObject(object: TMDObject, vram: VRAM) {
+
+    // convert lines separately, this should be improved upon.
+    if (object.primitives[0].codeType === 'Line') {
+      return this.convertLines(object);
+    }
+
     const materialTracker = new MaterialTracker();
     const geometry = new THREE.Geometry();
     geometry.vertices = object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
@@ -49,11 +57,27 @@ export class TMDToThreeJS {
   }
 
   private getUVs(materialTracker: MaterialTracker, materialIndex: number, primitive: Primitive) {
-    const textureImageData = materialTracker.objectMaterials[materialIndex].map.image;
+    const textureImageData = (<THREE.MeshStandardMaterial>materialTracker.objectMaterials[materialIndex]).map.image;
     const { u0, v0, u1, v1, u2, v2 } = primitive.packetData;
     const uv0 = new THREE.Vector2(u0 / textureImageData.width, v0 / textureImageData.height);
     const uv1 = new THREE.Vector2(u1 / textureImageData.width, v1 / textureImageData.height);
     const uv2 = new THREE.Vector2(u2 / textureImageData.width, v2 / textureImageData.height);
     return [uv0, uv1, uv2];
+  }
+
+  private convertLines(object: TMDObject) {
+    const points = [];
+    object.primitives.forEach(primitive => {
+      if (points.length === 0) {
+        const vertex0 = object.vertices[primitive.packetData.vertex0];
+        points.push(new THREE.Vector3(vertex0.x, vertex0.y, vertex0.z));
+      }
+
+      const vertex1 = object.vertices[primitive.packetData.vertex1];
+      points.push(new THREE.Vector3(vertex1.x, vertex1.y, vertex1.z));
+    });
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffffff }));
   }
 }

@@ -7,7 +7,6 @@ import { saveFile } from '@binary-files/save-file';
 import { TIM } from './tim/tim';
 import { timLoader } from './tim/tim-loader';
 
-let mesh;
 //THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 const renderer = new THREE.WebGLRenderer(); 
 const scene = new THREE.Scene();
@@ -88,13 +87,14 @@ function onButtonClick() {
 }
 
 let i = 0;
+let meshes;
 
 function drawTMD(tmd) {
   
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  camera.position.set(0, 0, 2000);
+  camera.position.set(0, 0, 1000);
   camera.lookAt(0, 0, 0);
 
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
@@ -109,11 +109,11 @@ function drawTMD(tmd) {
   
 
   const converter = new TMDToThreeJS();
-  const meshes = converter.convertWithTMDAndVRAM(tmd, vram);
+  meshes = converter.convertWithTMDAndVRAM(tmd, vram);
 
-  mesh = meshes[0];
-  mesh.geometry.scale(0.2, 0.2, 0.2);
-  scene.add(mesh);
+  //mesh.geometry.scale(0.2, 0.2, 0.2);
+  meshes.forEach(mesh => scene.add(mesh));
+  //scene.add(mesh);
   renderer.render(scene, camera);
 
   // const textureData = mesh.material[i++].map.image;
@@ -127,8 +127,11 @@ function drawTMD(tmd) {
 
 function animate() {
   requestAnimationFrame(animate);
-  mesh.rotation.x += 0.005;
-  mesh.rotation.y += 0.005;
+  meshes.forEach(mesh => {
+    mesh.rotation.x += 0.005;
+    mesh.rotation.y += 0.005;
+  });
+  
   renderer.render(scene, camera);
 }
 

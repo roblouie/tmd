@@ -7,6 +7,7 @@ import { PrimitiveType } from './primitive-type.enum';
 import { gouradTexturedStruct, GouradTexturedData } from './structs/primitives/gourad-textured';
 import { lineSolidStruct, LineSolidData } from './structs/primitives/lines/line-solid.struct';
 import { lineGradientStruct, LineGradientData } from './structs/primitives/lines/line-gradient';
+import { noLightNoTextureSolidStruct, NoLightNoTextureSolidData } from './structs/primitives/no-light-no-texture-solid.struct';
 
 export class Primitive {
   primitiveData: PrimitiveData;
@@ -15,7 +16,7 @@ export class Primitive {
 
   isLightCalculated: boolean;
   faces: number;
-  noTextureColorMode: 'Solid' | 'Gradient';
+  colorMode: 'Solid' | 'Gradient';
   codeType: 'Polygon' | 'Line' | 'Sprite';
 
   isLightCalculatedAtTexture: boolean;
@@ -43,7 +44,7 @@ export class Primitive {
     
     this.isLightCalculated = (primitiveData.flag & lightCalculationFlagBitmask) === 0;
     this.faces = ((primitiveData.flag & polygonFaceCountFlagBitmask) >> 1) + 1;
-    this.noTextureColorMode = (primitiveData.flag & polygonColorFlagBitmask) >> 2 === 1 ? 'Gradient' : 'Solid';
+    this.colorMode = (primitiveData.flag & polygonColorFlagBitmask) >> 2 === 1 ? 'Gradient' : 'Solid';
 
     // Parse code info
     const codeBitmask = 0b11100000;
@@ -153,25 +154,25 @@ export class Primitive {
     if (this.codeType === 'Polygon' && this.numberOfSides === 3 && this.isLightCalculated) {
       
       // Flat shading no texture solid color
-      if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Solid') {
+      if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Solid') {
         this.packetDataType = PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_SOLID;
         this.packetData = flatNoTextureSolidStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading no texture solid color
-      else if (this.shading === 'Gourad' && !this.isTextured && this.noTextureColorMode === 'Solid') {
+      else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Solid') {
         this.packetDataType = PrimitiveType.THREE_SIDED_GOURAD_NO_TEXTURE_SOLID;
         this.packetData = gouradNoTextureSolidStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Flat shading no texture gradient color
-      else if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Gradient') {
+      else if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '3_SIDED_FLAT_NO_TEXTURE_GRADIENT';
         this.packetData = flatNoTextureGradientStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading no texture gradient color
-      else if (this.shading === 'Gourad' && !this.isTextured && this.noTextureColorMode === 'Gradient') {
+      else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '3_SIDED_GOURAD_NO_TEXTURE_GRADIENT';
       }
 
@@ -192,22 +193,22 @@ export class Primitive {
     } else if (this.codeType === 'Polygon' && this.numberOfSides === 4 && this.isLightCalculated) {
 
       // Flat shading no texture solid color
-      if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Solid') {
+      if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Solid') {
         this.packetDataType = '4_SIDED_FLAT_NO_TEXTURE_SOLID';
       }
 
       // Gourad shading no texture solid color
-      else if (this.shading === 'Gourad' && !this.isTextured && this.noTextureColorMode === 'Solid') {
+      else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Solid') {
         this.packetDataType = '4_SIDED_GOURAD_NO_TEXTURE_SOLID';
       }
 
       // Flat shading no texture gradient color
-      else if (this.shading === 'Flat' && !this.isTextured && this.noTextureColorMode === 'Gradient') {
+      else if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '4_SIDED_FLAT_NO_TEXTURE_GRADIENT';
       }
 
       // Gourad shading no texture gradient color
-      else if (this.shading === 'Gourad' && !this.isTextured && this.noTextureColorMode === 'Gradient') {
+      else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '4_SIDED_GOURAD_NO_TEXTURE_GRADIENT';
       }
 
@@ -226,23 +227,24 @@ export class Primitive {
     } else if (this.codeType === 'Polygon' && this.numberOfSides === 3 && !this.isLightCalculated) {
       
       // Solid no texture
-      if (!this.isTextured && this.noTextureColorMode === 'Solid') {
-        this.packetDataType = '3_SIDED_NO_TEXTURE_SOLID';
+      if (!this.isTextured && this.colorMode === 'Solid') {
+        this.packetDataType = PrimitiveType.THREE_SIDED_NO_LIGHT_NO_TEXTURE_SOLID;
+        this.packetData = noLightNoTextureSolidStruct.createObject<NoLightNoTextureSolidData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }
 
       // Gradient no texture
-      else if (!this.isTextured && this.noTextureColorMode === 'Gradient') {
-        this.packetDataType = '3_SIDED_NO_TEXTURE_GRADIENT';
+      else if (!this.isTextured && this.colorMode === 'Gradient') {
+        this.packetDataType = '3_SIDED_NO_LIGHT_NO_TEXTURE_GRADIENT';
       }
 
       // Solid texture
-      else if (this.noTextureColorMode === 'Solid' && this.isTextured) {
-        this.packetDataType = '3_SIDED_TEXTURE_SOLID';
+      else if (this.colorMode === 'Solid' && this.isTextured) {
+        this.packetDataType = '3_SIDED_NO_LIGHT_TEXTURE_SOLID';
       }
 
       // Gradient texture
-      else if (this.noTextureColorMode === 'Gradient' && this.isTextured) {
-        this.packetDataType = '3_SIDED_TEXTURE_GRADIENT';
+      else if (this.colorMode === 'Gradient' && this.isTextured) {
+        this.packetDataType = '3_SIDED_NO_LIGHT_TEXTURE_GRADIENT';
       }
 
 
@@ -250,36 +252,36 @@ export class Primitive {
     } else if (this.codeType === 'Polygon' && this.numberOfSides === 4 && !this.isLightCalculated) {
 
       // Solid no texture
-      if (!this.isTextured && this.noTextureColorMode === 'Solid') {
-        this.packetDataType = '3_SIDED_NO_TEXTURE_SOLID';
+      if (!this.isTextured && this.colorMode === 'Solid') {
+        this.packetDataType = '4_SIDED_NO_TEXTURE_SOLID';
       }
 
       // Gradient no texture
-      else if (!this.isTextured && this.noTextureColorMode === 'Gradient') {
-        this.packetDataType = '3_SIDED_NO_TEXTURE_GRADIENT';
+      else if (!this.isTextured && this.colorMode === 'Gradient') {
+        this.packetDataType = '4_SIDED_NO_TEXTURE_GRADIENT';
       }
 
       // Solid texture
-      else if (this.noTextureColorMode === 'Solid' && this.isTextured) {
-        this.packetDataType = '3_SIDED_TEXTURE_SOLID';
+      else if (this.colorMode === 'Solid' && this.isTextured) {
+        this.packetDataType = '4_SIDED_TEXTURE_SOLID';
       }
 
       // Gradient texture
-      else if (this.noTextureColorMode === 'Gradient' && this.isTextured) {
-        this.packetDataType = '3_SIDED_TEXTURE_GRADIENT';
+      else if (this.colorMode === 'Gradient' && this.isTextured) {
+        this.packetDataType = '4_SIDED_TEXTURE_GRADIENT';
       }
 
 
     // --- Straight Line ---
     } else if (this.codeType === 'Line') {
       // No Gradient
-      if (this.noTextureColorMode === 'Solid') {
+      if (this.colorMode === 'Solid') {
         this.packetDataType = PrimitiveType.LINE_SOLID;
         this.packetData = lineSolidStruct.createObject<LineSolidData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }
 
       // Gradient
-      else if (this.noTextureColorMode === 'Gradient') {
+      else if (this.colorMode === 'Gradient') {
         this.packetDataType = PrimitiveType.LINE_GRADIENT;
         this.packetData = lineGradientStruct.createObject<LineGradientData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }

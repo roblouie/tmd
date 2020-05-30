@@ -3,6 +3,8 @@ import { timHeaderStruct, TimHeaderData } from "./structs/header.struct";
 import { TIMPixelMode } from "./tim-pixel-modes.enum";
 import { PSXColor } from "../core/psx-color";
 
+
+// TODO: Add getter method that returns texture page
 export class TIM {
   static FileID = 0x00000010;
 

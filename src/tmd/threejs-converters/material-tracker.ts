@@ -3,9 +3,10 @@ import { Primitive } from '../primitive';
 import { VRAM } from '../../vram/vram';
 
 export class MaterialTracker {
-  private materials: THREE.MeshStandardMaterial[];
+  private materials: THREE.Material[];
   private texturePages: { bitsPerPixelToMaterialIndex: Map<number, number> }[];
   private nonTexturedIndex: number;
+  private lineIndex: number;
 
   constructor() {
     this.materials = [];
@@ -18,7 +19,7 @@ export class MaterialTracker {
     }
   }
 
-  get objectMaterials(): THREE.MeshStandardMaterial[] {
+  get objectMaterials(): THREE.Material[] {
     return this.materials
   }
 
@@ -29,9 +30,14 @@ export class MaterialTracker {
 
   private setMaterial(primitive: Primitive, vram: VRAM) {
     if (!primitive.isTextured) {
-      if (!this.nonTexturedIndex) {
+      if (!this.nonTexturedIndex && primitive.codeType === 'Polygon') {
         this.nonTexturedIndex = this.materials.length;
         this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true }));
+      }
+
+      if (!this.lineIndex && primitive.codeType === 'Line') {
+        this.lineIndex = this.materials.length;
+        this.materials.push(new THREE.LineBasicMaterial())
       }
       
       return;

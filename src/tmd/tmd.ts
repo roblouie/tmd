@@ -1,13 +1,13 @@
 import { headerStruct, HeaderData }  from './structs/header';
 import { objectTableStruct, ObjectTableData } from './structs/object-table';
-import vertexStruct from './structs/vertex.js';
 import { Primitive } from './primitive';
 import { primitiveStruct, PrimitiveData } from './structs/primitive';
 import { normalStruct, NormalData } from './structs/normal';
+import { vertexStruct, VertexData } from './structs/vertex';
 
 export interface TMDObject {
   primitives: Primitive[];
-  vertices: any[];
+  vertices: VertexData[];
   normals: NormalData[];
 }
 
@@ -26,15 +26,15 @@ export class TMD {
     this.objectInfos.forEach(objectInfo => {
       const object: TMDObject = {
         primitives: this.getPrimitives(objectInfo, arrayBuffer),
-        vertices: vertexStruct.createArray(arrayBuffer, objectInfo.verticesStart + this.header.nextOffset, objectInfo.verticesCount, true),
-        normals: normalStruct.createArray(arrayBuffer, objectInfo.normalsStart + this.header.nextOffset, objectInfo.normalsCount, true)
+        vertices: vertexStruct.createArray<VertexData>(arrayBuffer, objectInfo.verticesStart + this.header.nextOffset, objectInfo.verticesCount, true),
+        normals: normalStruct.createArray<NormalData>(arrayBuffer, objectInfo.normalsStart + this.header.nextOffset, objectInfo.normalsCount, true)
       };
 
       this.objects.push(object);
     });
   }
 
-  getPrimitives(object: ObjectTableData, arrayBuffer: ArrayBuffer) {
+  getPrimitives(object: ObjectTableData, arrayBuffer: ArrayBuffer): Primitive[] {
     const objectPrimitives = [];
     let offset = this.header.nextOffset + object.primitivesStart;
 
