@@ -67,7 +67,7 @@ export class MaterialTracker {
 
     if (this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel) === undefined) {
       const timToUse = tims.find(tim => tim.texturePage === primitive.texturePage);
-      const textureImageData = timToUse.createImageData();
+      const textureImageData = timToUse.createImageData(primitive.textureCLUTXPosition, primitive.textureCLUTYPosition);
       var texture = new THREE.DataTexture(textureImageData.data, textureImageData.width, textureImageData.height, THREE.RGBAFormat);
       const nextMaterialIndex = this.materials.length;
       this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.set(primitive.textureBitsPerPixel, nextMaterialIndex);

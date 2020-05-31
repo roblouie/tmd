@@ -4,8 +4,6 @@ import { TIMPixelMode } from "./tim-pixel-modes.enum";
 import { PSXColor } from "../core/psx-color";
 import { VRAM } from "../vram/vram";
 
-
-// TODO: Add getter method that returns texture page
 export class TIM {
   static FileID = 0x00000010;
 
@@ -19,6 +17,8 @@ export class TIM {
   pixelDataHeader: SectionHeaderData;
   pixelData: Uint16Array;
 
+  cluts: PSXColor[][];
+
   private _byteLength: number;
 
   constructor(arrayBuffer: ArrayBuffer, startOffset = 0) {
@@ -29,14 +29,33 @@ export class TIM {
     if (this.hasCLUT) {
       this.clutHeader = sectionHeaderStruct.createObject<SectionHeaderData>(arrayBuffer, this.header.nextOffset, true);
 
-      pixelDataStart = this.clutHeader.nextOffset + this.clutHeader.dataWidth * this.clutHeader.dataHeight * 2;
-      
-      this.clutPixels = [];
+
+
+
+      pixelDataStart = this.header.nextOffset + this.clutHeader.sectionByteLength;
+
+      let currentRow = 0;
+      this.cluts = [];
       const dataView = new DataView(arrayBuffer);
       for (let i = this.clutHeader.nextOffset; i < pixelDataStart; i += 2) {
+        if (!this.cluts[currentRow]) {
+          this.cluts[currentRow] = [];
+        }
+
         const clutPixel = PSXColor.FromSixteenBitValue(dataView.getUint16(i, true));
-        this.clutPixels.push(clutPixel);
+        this.cluts[currentRow].push(clutPixel);
+
+        if (this.cluts[currentRow].length === this.clutHeader.dataWidth) {
+          currentRow++;
+        }
       }
+      
+      // this.clutPixels = [];
+      // const dataView = new DataView(arrayBuffer);
+      // for (let i = this.clutHeader.nextOffset; i < pixelDataStart; i += 2) {
+      //   const clutPixel = PSXColor.FromSixteenBitValue(dataView.getUint16(i, true));
+      //   this.clutPixels.push(clutPixel);
+      // }
     }
 
     this.pixelDataHeader = sectionHeaderStruct.createObject<SectionHeaderData>(arrayBuffer, pixelDataStart, true);
@@ -65,13 +84,25 @@ export class TIM {
     return xPage + yPage * 16;
   }
 
-  createImageData(): ImageData {
+  getCLUTFromVRAMXY(vramX: number, vramY: number) {
+    const adjustedY = vramY - this.clutHeader.vramY;
+    const adjustedX = vramX - this.clutHeader.vramX;
+
+    if (adjustedX === 0) {
+      return this.cluts[adjustedY];
+    } else {
+      return this.cluts[adjustedY].slice(adjustedX);
+    }
+  }
+
+  createImageData(clutX ?: number, clutY ?: number): ImageData {
+
     if (this.hasCLUT && this.clutHeader.dataWidth === 16) {
-      return this.create4BitImageData();
+      return this.create4BitImageData(clutX, clutY);
     }
 
     else if (this.hasCLUT && this.clutHeader.dataWidth === 256) {
-      return this.create8BitImageData();
+      return this.create8BitImageData(clutX, clutY);
     }
 
     else if (!this.hasCLUT && this.pixelMode === TIMPixelMode.FIFTEEN_BIT_CLUT) {
@@ -88,7 +119,20 @@ export class TIM {
   }
 
 
-  private create4BitImageData(): ImageData {
+  create4BitImageData(clutX?: number, clutY?: number): ImageData {
+    // Use the first CLUT if no clut X and Y is passed in.
+    if (this.hasCLUT) {
+      if (clutX == undefined) {
+        clutX = this.clutHeader.vramX;
+      }
+
+      if (clutY == undefined) {
+        clutY = this.clutHeader.vramY;
+      }
+    }
+
+    const clut = this.getCLUTFromVRAMXY(clutX, clutY);
+
     const imageData = new ImageData(this.pixelDataHeader.dataWidth * TIM.FourBitMultiplier, this.pixelDataHeader.dataHeight);
     this.pixelData.forEach((pixelData, index) => {
       const imageDataIndex = index * 16;
@@ -97,30 +141,44 @@ export class TIM {
       const thirdColorIndex = pixelData >> 8 & 0b1111;
       const fourthColorIndex = pixelData >> 12 & 0b1111;
 
-      this.setImageDataPixel(imageData, imageDataIndex, this.clutPixels[firstColorIndex]);
-      this.setImageDataPixel(imageData, imageDataIndex + 4, this.clutPixels[secondColorIndex]);
-      this.setImageDataPixel(imageData, imageDataIndex + 8, this.clutPixels[thirdColorIndex]);
-      this.setImageDataPixel(imageData, imageDataIndex + 12, this.clutPixels[fourthColorIndex]);
+      this.setImageDataPixel(imageData, imageDataIndex, clut[firstColorIndex]);
+      this.setImageDataPixel(imageData, imageDataIndex + 4, clut[secondColorIndex]);
+      this.setImageDataPixel(imageData, imageDataIndex + 8, clut[thirdColorIndex]);
+      this.setImageDataPixel(imageData, imageDataIndex + 12, clut[fourthColorIndex]);
     });
 
     return imageData;
   }
 
-  private create8BitImageData(): ImageData {
+  create8BitImageData(clutX?: number, clutY?: number): ImageData {
+
+    // Use the first CLUT if no clut X and Y is passed in.
+    if (this.hasCLUT) {
+      if (clutX == undefined) {
+        clutX = this.clutHeader.vramX;
+      }
+
+      if (clutY == undefined) {
+        clutY = this.clutHeader.vramY;
+      }
+    }
+
+    const clut = this.getCLUTFromVRAMXY(clutX, clutY);
+
     const imageData = new ImageData(this.pixelDataHeader.dataWidth * TIM.EightBitMultiplier, this.pixelDataHeader.dataHeight);
     this.pixelData.forEach((pixelData, index) => {
       const imageDataIndex = index * 8;
       const firstColorIndex = pixelData & 0b11111111;
       const secondColorIndex = pixelData >> 8;
 
-      this.setImageDataPixel(imageData, imageDataIndex, this.clutPixels[firstColorIndex]);
-      this.setImageDataPixel(imageData, imageDataIndex + 4, this.clutPixels[secondColorIndex]);
+      this.setImageDataPixel(imageData, imageDataIndex, clut[firstColorIndex]);
+      this.setImageDataPixel(imageData, imageDataIndex + 4, clut[secondColorIndex]);
     });
 
     return imageData;
   }
 
-  private create16BitImageData(): ImageData {
+  create16BitImageData(): ImageData {
     const imageData = new ImageData(this.pixelDataHeader.dataWidth, this.pixelDataHeader.dataHeight);
     this.pixelData.forEach((pixelData, index) => {
       const imageDataIndex = index * 4;
@@ -131,7 +189,7 @@ export class TIM {
     return imageData;
   }
 
-  private create24BitImageData(): ImageData {
+  create24BitImageData(): ImageData {
     const imageData = new ImageData(this.pixelDataHeader.dataWidth * TIM.TwentyFourBitMultiplier, this.pixelDataHeader.dataHeight);
     let imageDataIndex = 0;
     for (let i = 0; i < this.pixelData.length; i += 3) {

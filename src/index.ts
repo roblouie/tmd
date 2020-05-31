@@ -17,37 +17,68 @@ camera.position.z = 0;
 let textureImageData;
 let vram;
 let tims;
+let canvasContext;
 
 window.onload = async () => {
+  canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
+
   const parseButton = document.getElementById("parse");
   parseButton.onclick = onButtonClick;
 
   const vramParseButton = document.getElementById("vram-parse");
   vramParseButton.onclick = onVramParse;
 
+  const timParseButton = document.getElementById('tim-parse');
+  timParseButton.onclick = onTimParse;
+
   //document.onkeyup = changeObject();
-  const timData = await openFile('assets/DINO.TIM');
-  tims = timLoader.getTIMsFromTIMFile(timData);
-  const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
-
-  const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
-
-  tims.forEach(tim => {
-    const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
-    const imageData = tim.createImageData();
-    canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
-    console.log(tim.texturePage);
-  });
-
-  //console.log(tims[0]);
-
-  const tmdData = await openFile('assets/DINOBASE.TMD');
-  //const vramData = await openFile('assets/vram.bin');
-  //vram = new VRAM(vramData);
-  const tmd = new TMD(tmdData);
-  drawTMD(tmd);
-  //const test2 = test[3].createImageData();
+  // const timData = await openFile('assets/DINO.TIM');
+  // tims = timLoader.getTIMsFromTIMFile(timData);
   
+
+  // const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
+
+  // tims.forEach(tim => {
+  //   const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
+  //   const imageData = tim.createImageData();
+  //   canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
+  //   console.log(tim.texturePage);
+  // });
+
+  // console.log(tims[0]);
+
+  // const tmdData = await openFile('assets/DINOBASE.TMD');
+  // // const vramData = await openFile('assets/vram.bin');
+  // // vram = new VRAM(vramData);
+  // const tmd = new TMD(tmdData);
+  // drawTMD(tmd);
+  // //const test2 = test[3].createImageData();
+  
+}
+
+function onTimParse() {
+  const fileInput = document.getElementById("tim-file-input") as HTMLInputElement;
+  const files = fileInput.files;
+  const reader = new FileReader();
+  reader.onload = () => {
+    //tims = [new TIM(<ArrayBuffer>reader.result)] //
+    tims = timLoader.scanForTIMs(<ArrayBuffer>reader.result);
+    console.log(tims[0]);
+
+    const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
+
+    tims.forEach((tim: TIM) => {
+      const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
+      const imageData = tim.createImageData();
+      if (imageData) {
+        canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
+      }
+      
+      console.log(tim.texturePage);
+    })
+  }
+
+  reader.readAsArrayBuffer(files[0]);
 }
 
 function onVramParse() {
