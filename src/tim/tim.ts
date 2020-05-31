@@ -2,6 +2,7 @@ import { SectionHeaderData, sectionHeaderStruct } from "./structs/section-header
 import { timHeaderStruct, TimHeaderData } from "./structs/header.struct";
 import { TIMPixelMode } from "./tim-pixel-modes.enum";
 import { PSXColor } from "../core/psx-color";
+import { VRAM } from "../vram/vram";
 
 
 // TODO: Add getter method that returns texture page
@@ -55,6 +56,13 @@ export class TIM {
 
   get byteLength(): number {
     return this._byteLength;
+  }
+
+  get texturePage(): number {
+    const xPage = this.pixelDataHeader.vramX / VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
+    const yPage = this.pixelDataHeader.vramY / VRAM.TEXTURE_PAGE_NATIVE_HEIGHT;
+
+    return xPage + yPage * 16;
   }
 
   createImageData(): ImageData {

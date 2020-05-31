@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 import { TMD } from "./tmd/tmd";
 import { VRAM } from "./vram/vram";
-import { TMDToThreeJS } from './tmd/threejs-converters/tmd-to-threejs';
+import { TMDToThreeJS } from './threejs-converters/tmd-to-threejs';
 import { saveFile } from '@binary-files/save-file';
 import { TIM } from './tim/tim';
 import { timLoader } from './tim/tim-loader';
@@ -16,6 +16,7 @@ camera.position.z = 0;
 
 let textureImageData;
 let vram;
+let tims;
 
 window.onload = async () => {
   const parseButton = document.getElementById("parse");
@@ -25,22 +26,25 @@ window.onload = async () => {
   vramParseButton.onclick = onVramParse;
 
   //document.onkeyup = changeObject();
-  // const timData = await openFile('assets/re1-texture-tim-test.TIM');
-  // const tims = timLoader.getTIMsFromTIMFile(timData);
-  // const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
+  const timData = await openFile('assets/DINO.TIM');
+  tims = timLoader.getTIMsFromTIMFile(timData);
+  const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
 
-  // const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
+  const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
 
-  // tims.forEach(tim => {
-  //   const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
-  //   const imageData = tim.createImageData();
-  //   canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
-  // });
+  tims.forEach(tim => {
+    const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
+    const imageData = tim.createImageData();
+    canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
+    console.log(tim.texturePage);
+  });
 
   //console.log(tims[0]);
 
-  const tmdData = await openFile('assets/vibribbon-game.PAK');
-  const tmd = new TMD(tmdData, 0x13118);
+  const tmdData = await openFile('assets/DINOBASE.TMD');
+  //const vramData = await openFile('assets/vram.bin');
+  //vram = new VRAM(vramData);
+  const tmd = new TMD(tmdData);
   drawTMD(tmd);
   //const test2 = test[3].createImageData();
   
@@ -109,7 +113,7 @@ function drawTMD(tmd) {
   
 
   const converter = new TMDToThreeJS();
-  meshes = converter.convertWithTMDAndVRAM(tmd, vram);
+  meshes = converter.convertWithTMDAndTIM(tmd, tims);
 
   meshes[0].geometry.scale(0.2, 0.2, 0.2);
   meshes.forEach(mesh => scene.add(mesh));

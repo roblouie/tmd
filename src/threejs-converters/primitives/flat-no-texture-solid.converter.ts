@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
 import { conversionUtil } from '../conversion-util';
-import { FlatNoTextureSolidData } from '../../structs/primitives/flat-no-texture-solid.struct';
-import { NormalData } from '../../structs/normal';
+import { FlatNoTextureSolidData } from '../../tmd/structs/primitives/flat-no-texture-solid.struct';
+import { NormalData } from '../../tmd/structs/normal';
 
 export const FlatNoTextureSolidConverter = {
 

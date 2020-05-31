@@ -1,8 +1,6 @@
 import * as THREE from 'three';
-import { conversionUtil } from '../conversion-util';
-import { TMDObject } from '../../tmd';
-import { FlatTexturedData } from '../../structs/primitives/flat-textured.js';
-import { NormalData } from '../../structs/normal';
+import { FlatTexturedData } from '../../tmd/structs/primitives/flat-textured';
+import { NormalData } from '../../tmd/structs/normal';
 
 export const FlatTexturedConverter = {
 

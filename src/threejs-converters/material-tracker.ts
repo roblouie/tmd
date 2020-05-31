@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Primitive } from '../primitive';
-import { VRAM } from '../../vram/vram';
+import { Primitive } from '../tmd/primitive';
+import { VRAM } from '../vram/vram';
+import { TIM } from '../tim/tim';
 
 export class MaterialTracker {
   private materials: THREE.Material[];
@@ -27,9 +28,17 @@ export class MaterialTracker {
     return this.getMaterialIndex(primitive);
   }
 
+  createMaterialFromTIMAndGetIndex(primitive: Primitive, tims: TIM[]): number {
+    this.setMaterialFromTIM(primitive, tims);
+    return this.getMaterialIndex(primitive);
+  }
+
+  // TODO: Consider refactoring setMaterialFromVRAM and setMaterialFromTIM as they both are almost the same
+  // Probabaly have setMaterial and then detect tim vs vram and run the corresponding code to generate the
+  // image data.
   private setMaterialFromVRAM(primitive: Primitive, vram: VRAM) {
     if (!primitive.isTextured) {
-      if (!this.nonTexturedIndex && primitive.codeType === 'Polygon') {
+      if (!this.nonTexturedIndex) {
         this.nonTexturedIndex = this.materials.length;
         this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true }));
       }
@@ -44,6 +53,26 @@ export class MaterialTracker {
       this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.set(primitive.textureBitsPerPixel, nextMaterialIndex);
       this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true, map: texture }));
     } 
+  }
+
+  private setMaterialFromTIM(primitive: Primitive, tims: TIM[]) {
+    if (!primitive.isTextured) {
+      if (!this.nonTexturedIndex) {
+        this.nonTexturedIndex = this.materials.length;
+        this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true }));
+      }
+
+      return;
+    }
+
+    if (this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel) === undefined) {
+      const timToUse = tims.find(tim => tim.texturePage === primitive.texturePage);
+      const textureImageData = timToUse.createImageData();
+      var texture = new THREE.DataTexture(textureImageData.data, textureImageData.width, textureImageData.height, THREE.RGBAFormat);
+      const nextMaterialIndex = this.materials.length;
+      this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.set(primitive.textureBitsPerPixel, nextMaterialIndex);
+      this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true, map: texture }));
+    }
   }
 
   private getMaterialIndex(primitive: Primitive): number {
