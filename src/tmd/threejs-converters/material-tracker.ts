@@ -6,7 +6,6 @@ export class MaterialTracker {
   private materials: THREE.Material[];
   private texturePages: { bitsPerPixelToMaterialIndex: Map<number, number> }[];
   private nonTexturedIndex: number;
-  private lineIndex: number;
 
   constructor() {
     this.materials = [];
@@ -23,21 +22,16 @@ export class MaterialTracker {
     return this.materials
   }
 
-  createMaterialAndGetIndex(primitive: Primitive, vram: VRAM): number {
-    this.setMaterial(primitive, vram);
+  createMaterialFromVRAMAndGetIndex(primitive: Primitive, vram: VRAM): number {
+    this.setMaterialFromVRAM(primitive, vram);
     return this.getMaterialIndex(primitive);
   }
 
-  private setMaterial(primitive: Primitive, vram: VRAM) {
+  private setMaterialFromVRAM(primitive: Primitive, vram: VRAM) {
     if (!primitive.isTextured) {
       if (!this.nonTexturedIndex && primitive.codeType === 'Polygon') {
         this.nonTexturedIndex = this.materials.length;
         this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true }));
-      }
-
-      if (!this.lineIndex && primitive.codeType === 'Line') {
-        this.lineIndex = this.materials.length;
-        this.materials.push(new THREE.LineBasicMaterial())
       }
       
       return;
@@ -46,10 +40,10 @@ export class MaterialTracker {
     if (this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel) === undefined) {
       const textureImageData = vram.getTexturePageImageData(primitive.textureBitsPerPixel, primitive.texturePage, primitive.textureCLUTXPosition, primitive.textureCLUTYPosition);
       var texture = new THREE.DataTexture(textureImageData.data, textureImageData.width, textureImageData.height, THREE.RGBAFormat);
-      const nextMaterialIndex = this.materials.length
+      const nextMaterialIndex = this.materials.length;
       this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.set(primitive.textureBitsPerPixel, nextMaterialIndex);
       this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true, map: texture }));
-    }
+    } 
   }
 
   private getMaterialIndex(primitive: Primitive): number {

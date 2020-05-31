@@ -1,22 +1,24 @@
+import { PSXColor } from "../core/psx-color";
+
 export class VRAM {
-  static BEETLE_PSX_VRAM_OFFSET = 0x20AA19;
+  static readonly BEETLE_PSX_VRAM_OFFSET = 0x20AA19;
 
-  static VRAM_NATIVE_WIDTH = 1024;
-  static VRAM_NATIVE_HEIGHT = 512;
+  static readonly VRAM_NATIVE_WIDTH = 1024;
+  static readonly VRAM_NATIVE_HEIGHT = 512;
 
-  static VRAM_BYTE_WIDTH = 2048;
-  static VRAM_BYTE_HEIGHT = 512;
+  static readonly VRAM_BYTE_WIDTH = 2048;
+  static readonly VRAM_BYTE_HEIGHT = 512;
 
-  static TEXTURE_PAGE_NATIVE_WIDTH = 64;
-  static TEXTURE_PAGE_NATIVE_HEIGHT = 256;
+  static readonly TEXTURE_PAGE_NATIVE_WIDTH = 64;
+  static readonly TEXTURE_PAGE_NATIVE_HEIGHT = 256;
 
-  static TEXTURE_PAGE_BYTE_WIDTH = 128;
-  static TEXTURE_PAGE_BYTE_HEIGHT = 256;
+  static readonly ACCESSIBLE_TEXTURE_WIDTH = 256;
+  static readonly ACCESSIBLE_TEXTURE_HEIGHT = 256;
 
-  arrayBuffer: ArrayBuffer;
+  vramData: Uint16Array;
 
   constructor(vramArrayBuffer: ArrayBuffer) {
-    this.arrayBuffer = vramArrayBuffer;
+    this.vramData = new Uint16Array(vramArrayBuffer);
   }
 
   static fromBeetlePSXSaveState(arrayBuffer: ArrayBuffer): VRAM {
@@ -24,219 +26,212 @@ export class VRAM {
     return new VRAM(arrayBuffer.slice(VRAM.BEETLE_PSX_VRAM_OFFSET, endOfVRAM));
   }
 
-  // TODO: Refactore "texture overrun" logic to be less bad.
+  getTexturePageData(texturePage: number) {
+    let xPos: number;
+    let yPos: number;
 
-  getTexturePageImageData(bitsPerPixel: number, texturePage: number, clutX: number, clutY: number) {
-    
-    // TODO: Add four bit textrure page data fetcher and reenable
-    // if (bitsPerPixel === 4) {
-    //   const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
-    //   return this.getFourBitTexture(texturePageData, clutColors);
-    // }
+    if (texturePage < 16) {
+      xPos = texturePage * VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
+      yPos = 0;
+    } else {
+      xPos = (texturePage - 16) * VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
+      yPos = 256;
+    }
 
-    if (bitsPerPixel === 8) {
-      const texturePageData = this.getEightBitTexturePageData(texturePage);
+    let rawTexturePageData = new Uint16Array(VRAM.TEXTURE_PAGE_NATIVE_WIDTH * VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+
+    let dataIndex = xPos + yPos * VRAM.VRAM_NATIVE_WIDTH;
+    let currentRow = 1;
+    for (let i = 0; i < rawTexturePageData.length; i++) {
+      rawTexturePageData[i] = this.vramData[dataIndex];
+
+      dataIndex++;
+      if (i === VRAM.TEXTURE_PAGE_NATIVE_WIDTH * currentRow - 1) {
+        dataIndex += VRAM.VRAM_NATIVE_WIDTH - VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
+        currentRow++;
+      }
+    }
+    return rawTexturePageData;
+  }
+
+  getTexturePageImageData(bitsPerPixel: number, texturePage: number, clutX?: number, clutY?: number) {
+    let xPos: number;
+    let yPos: number;
+
+    if (texturePage < 16) {
+      xPos = texturePage * 64;
+      yPos = 0;
+    } else {
+      xPos = (texturePage - 16) * 64;
+      yPos = 256;
+    }
+
+    let dataIndex = xPos + yPos * VRAM.VRAM_NATIVE_WIDTH;
+
+    if (bitsPerPixel === 4) {
       const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
-      return this.getEightBitTexture(texturePageData, clutColors);
+      return this.getFourBitTexture(dataIndex, clutColors);
+    }
+    
+    if (bitsPerPixel === 8) {
+      const clutColors = this.getClutColors(clutX, clutY, bitsPerPixel);
+      return this.getEightBitTexture(dataIndex, clutColors);
     }
 
     if (bitsPerPixel === 16) {
-      const texturePageData = this.getSixteenBitTexturePageData(texturePage);
-      return this.getSixteenBitTexture(texturePageData);
+      return this.getSixteenBitTexture(dataIndex);
     }
 
     if (bitsPerPixel === 24) {
-      console.log('Not yet supported');
-      return null;
+      return this.getTwentyFourBitTexture(dataIndex);
     }
-  }
-
-  getEightBitTexturePageData(texturePage) {
-    let xPos;
-    let yPos;
-
-    if (texturePage < 16) {
-      xPos = texturePage * 128;
-      yPos = 0;
-    } else {
-      xPos = (texturePage - 16) * 128;
-      yPos = 256;
-    }
-
-    // For 8-bit textures the playstation can "overread" into the next texture page. To allow for this we need to grab
-    // two texture pages if the selected page isn't 15 or 31, as those are the ends of the tpage rows and can't be overread.
-    let nextPageMultiplier = 1;
-    if (texturePage !== 15 && texturePage !== 31) {
-      nextPageMultiplier = 2;
-    }
-
-    const texturePageBytes = new Uint8Array(VRAM.TEXTURE_PAGE_BYTE_WIDTH * VRAM.TEXTURE_PAGE_BYTE_HEIGHT * nextPageMultiplier);
-    const dataView = new DataView(this.arrayBuffer);
-
-    let dataIndex = xPos + yPos * VRAM.VRAM_BYTE_WIDTH;
-    let currentRow = 1;
-
-    for (let i = 0; i < texturePageBytes.length; i++) {
-      texturePageBytes[i] = dataView.getUint8(dataIndex);
-      dataIndex++;
-
-      if (i === (VRAM.TEXTURE_PAGE_BYTE_WIDTH * currentRow * nextPageMultiplier - 1)) {
-        dataIndex += VRAM.VRAM_BYTE_WIDTH - VRAM.TEXTURE_PAGE_BYTE_WIDTH * nextPageMultiplier;
-        currentRow++;
-      }
-    }
-    console.log(texturePageBytes.length);
-    return texturePageBytes;
-  }
-
-  getSixteenBitTexturePageData(texturePage) {
-    let xPos;
-    let yPos;
-
-    if (texturePage < 16) {
-      xPos = texturePage * 128;
-      yPos = 0;
-    } else {
-      xPos = (texturePage - 16) * 128;
-      yPos = 256;
-    }
-
-    const texturePageBytes = new Uint8Array(VRAM.TEXTURE_PAGE_BYTE_WIDTH * VRAM.TEXTURE_PAGE_BYTE_HEIGHT);
-    const dataView = new DataView(this.arrayBuffer);
-
-    let dataIndex = xPos + yPos * VRAM.TEXTURE_PAGE_BYTE_WIDTH;
-    let currentRow = 1;
     
-    for (let i = 0; i < texturePageBytes.length; i++) {
-      texturePageBytes[i] = dataView.getUint8(dataIndex);
-      dataIndex++;
+  }
 
-      if (i === (VRAM.TEXTURE_PAGE_BYTE_WIDTH * currentRow - 1)) {
-        dataIndex += VRAM.VRAM_BYTE_WIDTH - VRAM.TEXTURE_PAGE_BYTE_WIDTH;
+  getFourBitTexture(dataIndex: number, clutColors: PSXColor[]): ImageData {
+    // One texture page is 64 16-bit units across, or 256 4-bit units. Since we are dealing with
+    // an 4-bit texture here, we're dealing with 256 final pixels. Since this is the full accessible
+    // width, we only fetch one texture page.
+
+    const imageData = new ImageData(VRAM.ACCESSIBLE_TEXTURE_WIDTH, VRAM.ACCESSIBLE_TEXTURE_HEIGHT);
+
+    let currentRow = 1;
+    let currentPixel = 0;
+    for (let i = 0; i < imageData.data.length; i += 16) {
+      const pixelData = this.vramData[dataIndex];
+      const firstColorIndex = pixelData & 0b1111;
+      const secondColorIndex = pixelData >> 4 & 0b1111;
+      const thirdColorIndex = pixelData >> 8 & 0b1111;
+      const fourthColorIndex = pixelData >> 12 & 0b1111;
+
+      this.setImageDataPixel(imageData, i, clutColors[firstColorIndex]);
+      this.setImageDataPixel(imageData, i + 4, clutColors[secondColorIndex]);
+      this.setImageDataPixel(imageData, i + 8, clutColors[thirdColorIndex]);
+      this.setImageDataPixel(imageData, i + 12, clutColors[fourthColorIndex]);
+
+      dataIndex++;
+      currentPixel += 4;
+      if (currentPixel === VRAM.ACCESSIBLE_TEXTURE_WIDTH * currentRow) {
+        dataIndex += VRAM.VRAM_NATIVE_WIDTH - VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
         currentRow++;
       }
     }
 
-    return texturePageBytes;
+    return imageData;
   }
 
-  getFourBitTexture(texturePageData, clutColors) {
-    const imageData = new ImageData(VRAM.TEXTURE_PAGE_NATIVE_WIDTH * 4, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+  getEightBitTexture(dataIndex: number, clutColors: PSXColor[]): ImageData {
+    // One texture page is 64 16-bit units across, or 128 8-bit units. Since we are dealing with
+    // an 8-bit texture here, we're dealing with 128 pixel width. PS1 allows accessing texture
+    // coordinates up to 256, so in 8-bit mode we actually fetch 2 texture pages, the one
+    // specified by the asset, plus one more, this gives us the full 256 pixel width the PS1
+    // is capable of accessing.
+    const texturePagesToFetch = 2;
 
-    let byteIndex = 0;
+    const imageData = new ImageData(VRAM.ACCESSIBLE_TEXTURE_WIDTH, VRAM.ACCESSIBLE_TEXTURE_WIDTH);
 
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const currentByte = texturePageData[byteIndex];
-      const currentNibble = (i / 4) % 2;
+    let currentRow = 1;
+    let currentPixel = 0;
+    for (let i = 0; i < imageData.data.length; i+= 8) {
+      const pixelData = this.vramData[dataIndex];
+      const firstColorIndex = pixelData & 0b11111111;
+      const secondColorIndex = pixelData >> 8;
 
-      let paletteIndex;
+      this.setImageDataPixel(imageData, i, clutColors[firstColorIndex]);
+      this.setImageDataPixel(imageData, i + 4, clutColors[secondColorIndex]);
 
-      if (currentNibble === 0) {
-        paletteIndex = currentByte & 0xF; // get first nibble from byte value
-      } else {
-        paletteIndex = currentByte >> 4;  // get second nibble from byte value
+      dataIndex++;
+      currentPixel += 2;
+      if (currentPixel === VRAM.ACCESSIBLE_TEXTURE_WIDTH * currentRow) {
+        dataIndex += VRAM.VRAM_NATIVE_WIDTH - VRAM.TEXTURE_PAGE_NATIVE_WIDTH * texturePagesToFetch;
+        currentRow++;
       }
+    }
 
-      const color = clutColors[paletteIndex];
-      imageData.data[i] = color.red;
-      imageData.data[i + 1] = color.green;
-      imageData.data[i + 2] = color.blue;
-      imageData.data[i + 3] = 255;
+    return imageData;
+  }
 
-      if (currentNibble === 1) {
-        byteIndex++;
+  getSixteenBitTexture(dataIndex: number): ImageData {
+    // One texture page is 64 16-bit units across. Since we are dealing with
+    // a 16-bit texture here, we're dealing with 64 pixel width. PS1 allows accessing texture
+    // coordinates up to 256, so in 16-bit mode we actually fetch 4 texture pages, the one
+    // specified by the asset, plus 3 more, this gives us the full 256 pixel width the PS1
+    // is capable of accessing.
+    const texturePagesToFetch = 4;
+
+    const imageData = new ImageData(VRAM.ACCESSIBLE_TEXTURE_WIDTH, VRAM.ACCESSIBLE_TEXTURE_HEIGHT);
+
+    let currentRow = 1;
+    let currentPixel = 0;
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const pixelData = this.vramData[dataIndex];
+
+      const color = PSXColor.FromSixteenBitValue(pixelData);
+      this.setImageDataPixel(imageData, i, color);
+
+      dataIndex++;
+      currentPixel++
+      if (currentPixel === VRAM.ACCESSIBLE_TEXTURE_WIDTH * currentRow) {
+        dataIndex += VRAM.VRAM_NATIVE_WIDTH - VRAM.TEXTURE_PAGE_NATIVE_WIDTH * texturePagesToFetch;
+        currentRow++;
       }
     }
 
     return imageData;
   }
 
-  getEightBitTexture(texturePageData, clutColors) {
-    const imageData = new ImageData(VRAM.TEXTURE_PAGE_BYTE_WIDTH * 2, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
+  getTwentyFourBitTexture(dataIndex: number): ImageData {
+    // Presently only grabs one texture page, as I've never seen even a 16-bit texture
+    // let alone a 24-bit one. May need to be revisited.
+    const imageData = new ImageData(VRAM.ACCESSIBLE_TEXTURE_WIDTH, VRAM.ACCESSIBLE_TEXTURE_HEIGHT);
 
-    let byteIndex = 0;
+    let currentRow = 1;
+    let currentPixel = 0;
+    for (let i = 0; i < imageData.data.length; i += 8) {
+      const firstRedGreen = this.vramData[dataIndex];
+      const firstBlueSecondRed = this.vramData[dataIndex + 1];
+      const secondGreenBlue = this.vramData[dataIndex + 2];
 
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const paletteIndex = texturePageData[byteIndex]
-      const color = clutColors[paletteIndex];
-      imageData.data[i] = color.red;
-      imageData.data[i + 1] = color.green;
-      imageData.data[i + 2] = color.blue;
-      imageData.data[i + 3] = 255;
+      const firstBlue = firstBlueSecondRed & 0b11111111;
+      const secondRed = firstBlueSecondRed >> 8;
 
-      byteIndex++;
+      const firstPixel = PSXColor.FromTwentyFourBitValue(firstRedGreen + (firstBlue << 16));
+      const secondPixel = PSXColor.FromTwentyFourBitValue(secondRed + (secondGreenBlue << 8));
+      this.setImageDataPixel(imageData, i, firstPixel);
+      this.setImageDataPixel(imageData, i + 4, secondPixel);
+
+      dataIndex+= 3;
+      currentPixel += 2;
+      if (currentPixel === VRAM.ACCESSIBLE_TEXTURE_WIDTH * currentRow) {
+        dataIndex += VRAM.VRAM_NATIVE_WIDTH - VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
+        currentRow++;
+      }
     }
 
     return imageData;
   }
 
-  getSixteenBitTexture(texturePageData) {
-    const imageData = new ImageData(VRAM.TEXTURE_PAGE_NATIVE_WIDTH, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
-    const sixteenBitView = new Uint16Array(texturePageData.buffer);
-    let colorIndex = 0;
-
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const color = this.getRGBFrom16Bit(sixteenBitView[colorIndex]);
-      imageData.data[i] = color.red;
-      imageData.data[i + 1] = color.green;
-      imageData.data[i + 2] = color.blue;
-      imageData.data[i + 3] = 255;
-
-      colorIndex++;
-    }
-
-    return imageData;
-  }
-
-  getTwentyFourBitTexture(texturePageData) {
-    const imageData = new ImageData(VRAM.TEXTURE_PAGE_BYTE_WIDTH / 3, VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
-    let byteIndex = 0;
-
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      imageData.data[i] = texturePageData[byteIndex];
-      imageData.data[i + 1] = texturePageData[byteIndex + 1];
-      imageData.data[i + 2] = texturePageData[byteIndex + 2];
-      imageData.data[i + 3] = 255;
-
-      byteIndex += 3;
-    }
-
-    return imageData;
-  }
-
-  getClutColors(clutX, clutY, bitsPerPixel) {
+  getClutColors(clutX: number, clutY: number, bitsPerPixel: number) {
     const numberOfColors = bitsPerPixel === 4 ? 16 : 256;
     const clut16BitPos = clutX + clutY * VRAM.VRAM_NATIVE_WIDTH;
-    const clutData = new Uint16Array(this.arrayBuffer).slice(clut16BitPos, clut16BitPos + numberOfColors);
+    const clutData = this.vramData.slice(clut16BitPos, clut16BitPos + numberOfColors);
     
     const dataView = new DataView(clutData.buffer);
     const colors = [];
 
     for (let i = 0; i < clutData.length; i++) {
       const colorData = dataView.getUint16(i * 2, true);
-      colors.push(this.getRGBFrom16Bit(colorData));
+      colors.push(PSXColor.FromSixteenBitValue(colorData));
     }
 
     return colors;
   }
 
-  getRGBFrom16Bit(sixteenBitColorData) {
-    const redBitmask =   0b0000000000011111;
-    const greenBitmask = 0b0000001111100000;
-    const blueBitmask =  0b0111110000000000;
-    
-    const red16Bit = sixteenBitColorData & redBitmask;
-    const green16Bit = (sixteenBitColorData & greenBitmask) >> 5;
-    const blue16Bit = (sixteenBitColorData & blueBitmask) >> 10;
-
-    const red = red16Bit * 8.225;
-    const green = green16Bit * 8.225;
-    const blue = blue16Bit * 8.225;
-
-    return {
-      red: Math.round(red),
-      green: Math.round(green),
-      blue: Math.round(blue),
-    };
+  private setImageDataPixel(imageData: ImageData, imageDataIndex: number, color: PSXColor) {
+    imageData.data[imageDataIndex] = color.red;
+    imageData.data[imageDataIndex + 1] = color.green;
+    imageData.data[imageDataIndex + 2] = color.blue;
+    imageData.data[imageDataIndex + 3] = color.alpha;
   }
+
 }

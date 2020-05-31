@@ -21,23 +21,23 @@ window.onload = async () => {
   const parseButton = document.getElementById("parse");
   parseButton.onclick = onButtonClick;
 
-  // const vramParseButton = document.getElementById("vram-parse");
-  // vramParseButton.onclick = onVramParse;
+  const vramParseButton = document.getElementById("vram-parse");
+  vramParseButton.onclick = onVramParse;
 
   //document.onkeyup = changeObject();
-  const timData = await openFile('assets/DINO.TIM');
-  const tims = timLoader.getTIMsFromTIMFile(timData);
-  const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
+  // const timData = await openFile('assets/re1-texture-tim-test.TIM');
+  // const tims = timLoader.getTIMsFromTIMFile(timData);
+  // const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
 
-  const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
+  // const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
 
-  tims.forEach(tim => {
-    const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
-    const imageData = tim.createImageData();
-    canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
-  });
+  // tims.forEach(tim => {
+  //   const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
+  //   const imageData = tim.createImageData();
+  //   canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
+  // });
 
-  console.log(tims[0]);
+  //console.log(tims[0]);
 
   const tmdData = await openFile('assets/vibribbon-game.PAK');
   const tmd = new TMD(tmdData, 0x13118);
@@ -56,9 +56,9 @@ function onVramParse() {
   reader.onload = function () {
     vram = VRAM.fromBeetlePSXSaveState(<ArrayBuffer>reader.result);
 
-    saveFile(vram.arrayBuffer, 'vram.bin');
+    //saveFile(vram.arrayBuffer, 'vram.bin');
     
-    textureImageData = vram.getTexturePageImageData(8, 26, 0, 483);
+    textureImageData = vram.getTexturePageImageData(8, 10, 0, 480);
     console.log(textureImageData);
     const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
     canvasContext.putImageData(textureImageData, 0, 0);
@@ -111,16 +111,16 @@ function drawTMD(tmd) {
   const converter = new TMDToThreeJS();
   meshes = converter.convertWithTMDAndVRAM(tmd, vram);
 
-  //mesh.geometry.scale(0.2, 0.2, 0.2);
+  meshes[0].geometry.scale(0.2, 0.2, 0.2);
   meshes.forEach(mesh => scene.add(mesh));
   //scene.add(mesh);
   renderer.render(scene, camera);
 
-  // const textureData = mesh.material[i++].map.image;
-  // const imageData = new ImageData(textureData.width, textureData.height);
-  // textureData.data.forEach((data, i) => imageData.data[i] = data);
-  // const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
-  // canvasContext.putImageData(imageData, 0, 0);
+  const textureData = meshes[0].material[i++].map.image;
+  const imageData = new ImageData(textureData.width, textureData.height);
+  textureData.data.forEach((data, i) => imageData.data[i] = data);
+  const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
+  canvasContext.putImageData(imageData, 0, 0);
 
   animate();
 }

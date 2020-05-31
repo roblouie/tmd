@@ -12,12 +12,31 @@ import { GouradTexturedConverter } from "./primitives/gourad-textured.converter"
 export class TMDToThreeJS {
 
   convertWithTMDAndVRAM(tmd: TMD, vram: VRAM) {
-    return tmd.objects.map(object => this.convertObject(object, vram))
+    return tmd.objects.map(object => this.objectToMeshWithVRAM(object, vram))
   }
 
-  // This should likely be refactored to not return a mesh but rather the geometry and the material array inside an object.
-  // That would allow lines to also be sent out in a nicer way.
-  private convertObject(object: TMDObject, vram: VRAM) {
+  convertWithTMDOnly(tmd: TMD) {
+    const meshArray = [];
+
+    tmd.objects.forEach(object => {
+      const geometry = new THREE.Geometry();
+      const materialTracker = new MaterialTracker();
+      materialTracker.objectMaterials.push(new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      geometry.vertices = object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
+
+      object.primitives.forEach(primitive => {
+        this.populateGeometry(primitive, geometry, object, 0, materialTracker);
+      });
+
+      // Clear the UVs that were brought over from PS1 since we don't have a texture;
+      geometry.faceVertexUvs[0] = [];
+      meshArray.push(new THREE.Mesh(geometry, materialTracker.objectMaterials));
+    });
+
+    return meshArray;
+  }
+
+  private objectToMeshWithVRAM(object: TMDObject, vram: VRAM) {
 
     // convert lines separately, this should be improved upon.
     if (object.primitives[0].codeType === 'Line') {
@@ -26,46 +45,46 @@ export class TMDToThreeJS {
 
     const materialTracker = new MaterialTracker();
     const geometry = new THREE.Geometry();
+
     geometry.vertices = object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
 
     object.primitives.forEach(primitive => {
-      const materialIndex = materialTracker.createMaterialAndGetIndex(primitive, vram);
+      const materialIndex = materialTracker.createMaterialFromVRAMAndGetIndex(primitive, vram);
 
-      switch (primitive.packetDataType) {
-
-        case PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_SOLID:
-          geometry.faces.push(FlatNoTextureSolidConverter.GetFace(primitive.packetData, object.normals, materialIndex));
-          break;
-
-        case PrimitiveType.THREE_SIDED_GOURAD_NO_TEXTURE_SOLID:
-          geometry.faces.push(GouradNoTextureSolidConverter.GetFace(primitive.packetData, object.normals, materialIndex));
-          break;
-
-        case PrimitiveType.THREE_SIDED_FLAT_TEXTURE:
-          geometry.faces.push(FlatTexturedConverter.GetFace(primitive.packetData, object.normals, materialIndex));
-          geometry.faceVertexUvs[0].push(this.getUVs(materialTracker, materialIndex, primitive));
-          break;
-
-        case PrimitiveType.THREE_SIDED_GOURAD_TEXTURE:
-          geometry.faces.push(GouradTexturedConverter.GetFace(primitive.packetData, object.normals, materialIndex));
-          geometry.faceVertexUvs[0].push(this.getUVs(materialTracker, materialIndex, primitive));
-          break;
-      }
+      this.populateGeometry(primitive, geometry, object, materialIndex, materialTracker);
     });
 
     return new THREE.Mesh(geometry, materialTracker.objectMaterials);
   }
 
+  private populateGeometry(primitive: Primitive, geometry: THREE.Geometry, object: TMDObject, materialIndex: number, materialTracker: MaterialTracker) {
+    switch (primitive.packetDataType) {
+      case PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_SOLID:
+        geometry.faces.push(FlatNoTextureSolidConverter.GetFace(primitive.packetData, object.normals, materialIndex));
+        break;
+      case PrimitiveType.THREE_SIDED_GOURAD_NO_TEXTURE_SOLID:
+        geometry.faces.push(GouradNoTextureSolidConverter.GetFace(primitive.packetData, object.normals, materialIndex));
+        break;
+      case PrimitiveType.THREE_SIDED_FLAT_TEXTURE:
+        geometry.faces.push(FlatTexturedConverter.GetFace(primitive.packetData, object.normals, materialIndex));
+        geometry.faceVertexUvs[0].push(this.getUVs(materialTracker, materialIndex, primitive));
+        break;
+      case PrimitiveType.THREE_SIDED_GOURAD_TEXTURE:
+        geometry.faces.push(GouradTexturedConverter.GetFace(primitive.packetData, object.normals, materialIndex));
+        geometry.faceVertexUvs[0].push(this.getUVs(materialTracker, materialIndex, primitive));
+        break;
+    }
+  }
+
   private getUVs(materialTracker: MaterialTracker, materialIndex: number, primitive: Primitive) {
-    const textureImageData = (<THREE.MeshStandardMaterial>materialTracker.objectMaterials[materialIndex]).map.image;
     const { u0, v0, u1, v1, u2, v2 } = primitive.packetData;
-    const uv0 = new THREE.Vector2(u0 / textureImageData.width, v0 / textureImageData.height);
-    const uv1 = new THREE.Vector2(u1 / textureImageData.width, v1 / textureImageData.height);
-    const uv2 = new THREE.Vector2(u2 / textureImageData.width, v2 / textureImageData.height);
+    const uv0 = new THREE.Vector2(u0 / VRAM.ACCESSIBLE_TEXTURE_WIDTH, v0 / VRAM.ACCESSIBLE_TEXTURE_HEIGHT);
+    const uv1 = new THREE.Vector2(u1 / VRAM.ACCESSIBLE_TEXTURE_WIDTH, v1 / VRAM.ACCESSIBLE_TEXTURE_HEIGHT);
+    const uv2 = new THREE.Vector2(u2 / VRAM.ACCESSIBLE_TEXTURE_WIDTH, v2 / VRAM.ACCESSIBLE_TEXTURE_HEIGHT);
     return [uv0, uv1, uv2];
   }
 
-  private convertLines(object: TMDObject) {
+  private convertLines(object: TMDObject): THREE.Line {
     const points = [];
     object.primitives.forEach(primitive => {
       if (points.length === 0) {
