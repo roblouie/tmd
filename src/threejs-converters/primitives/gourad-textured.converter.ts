@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { conversionUtil } from '../conversion-util';
 import { GouradTexturedData } from '../../tmd/structs/primitives/gourad-textured';
-import { NormalData } from '../../tmd/structs/normal';
+import { NormalData } from '../../tmd/structs/normal.struct';
 
 export const GouradTexturedConverter = {
 

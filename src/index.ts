@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { TMD } from "./tmd/tmd";
 import { VRAM } from "./vram/vram";
 import { TMDToThreeJS } from './threejs-converters/tmd-to-threejs';
-import { saveFile } from '@binary-files/save-file';
 import { TIM } from './tim/tim';
 import { timLoader } from './tim/tim-loader';
+import { tmdLoader } from './tmd/tmd-loader';
 
 //THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 const renderer = new THREE.WebGLRenderer(); 
@@ -32,8 +32,8 @@ window.onload = async () => {
   timParseButton.onclick = onTimParse;
 
   //document.onkeyup = changeObject();
-  // const timData = await openFile('assets/DINO.TIM');
-  // tims = timLoader.getTIMsFromTIMFile(timData);
+  //const timData = await openFile('assets/DINO.TIM');
+  //tims = timLoader.getTIMsFromTIMFile(timData);
   
 
   // const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
@@ -47,11 +47,11 @@ window.onload = async () => {
 
   // console.log(tims[0]);
 
-  // const tmdData = await openFile('assets/DINOBASE.TMD');
+  //const tmdData = await openFile('assets/DINOBASE.TMD');
   // // const vramData = await openFile('assets/vram.bin');
   // // vram = new VRAM(vramData);
-  // const tmd = new TMD(tmdData);
-  // drawTMD(tmd);
+  //const tmd = new TMD(tmdData);
+  //drawTMD(tmd);
   // //const test2 = test[3].createImageData();
   
 }
@@ -65,13 +65,21 @@ function onTimParse() {
     tims = timLoader.scanForTIMs(<ArrayBuffer>reader.result);
     console.log(tims[0]);
 
-    const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
-
+    let xPos = 0;
+    let yPos = 0;
+    
     tims.forEach((tim: TIM) => {
-      const posOffset = (tim.pixelDataHeader.vramX - leftmostX) * 2;
       const imageData = tim.createImageData();
       if (imageData) {
-        canvasContext.putImageData(imageData, posOffset, tim.pixelDataHeader.vramY);
+
+        canvasContext.putImageData(imageData, xPos, yPos);
+        xPos += imageData.width;
+
+        if (xPos >= canvasContext.canvas.width) {
+          xPos = 0;
+          yPos += 256;
+        }
+
       }
       
       console.log(tim.texturePage);
@@ -110,12 +118,20 @@ function onButtonClick() {
   const reader = new FileReader();
 
   reader.onload = function () {
-    const tmd = new TMD(reader.result as ArrayBuffer);
-    const matching = tmd.objects[0].primitives.filter(primitive => primitive.packetData.u0);
-    console.log(tmd);
-    console.log(matching);
+    const tmds = tmdLoader.scanForTMDs(reader.result as ArrayBuffer);
 
-    drawTMD(tmd);
+    console.log(tmds);
+
+    if (tmds.length > 0) {
+      drawTMD(tmds[0]);
+    }
+
+    // const tmd = new TMD(reader.result as ArrayBuffer);
+    // const matching = tmd.objects[0].primitives.filter(primitive => primitive.packetData.u0);
+    // console.log(tmd);
+    // console.log(matching);
+
+    // drawTMD(tmd);
   }
 
   reader.readAsArrayBuffer(files[0]);
@@ -129,7 +145,7 @@ function drawTMD(tmd) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  camera.position.set(0, 0, 1000);
+  camera.position.set(0, 0, 2000);
   camera.lookAt(0, 0, 0);
 
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
@@ -139,23 +155,15 @@ function drawTMD(tmd) {
   var directionalLight = new THREE.DirectionalLight(0xffffff);
   directionalLight.position.set(1, 1, 1).normalize();
   scene.add(directionalLight);
-
-  //mesh = FlatTexturedSolidConverter.GetMesh(tmd.objects[3], textureImageData);
   
 
   const converter = new TMDToThreeJS();
-  meshes = converter.convertWithTMDAndTIM(tmd, tims);
+  meshes = converter.convertWithTMDOnly(tmd);
 
   meshes[0].geometry.scale(0.2, 0.2, 0.2);
   meshes.forEach(mesh => scene.add(mesh));
   //scene.add(mesh);
   renderer.render(scene, camera);
-
-  const textureData = meshes[0].material[i++].map.image;
-  const imageData = new ImageData(textureData.width, textureData.height);
-  textureData.data.forEach((data, i) => imageData.data[i] = data);
-  const canvasContext = (document.querySelector('#texture-canvas') as HTMLCanvasElement).getContext('2d');
-  canvasContext.putImageData(imageData, 0, 0);
 
   animate();
 }

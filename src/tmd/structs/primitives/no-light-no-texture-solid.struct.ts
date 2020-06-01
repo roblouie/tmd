@@ -17,5 +17,6 @@ export const noLightNoTextureSolidStruct = new Struct(
   Struct.Uint8('mode'),
   Struct.Uint16('vertex0'),
   Struct.Uint16('vertex1'),
-  Struct.Uint16('vertex2')
+  Struct.Uint16('vertex2'),
+  Struct.Uint16('unused')
 );

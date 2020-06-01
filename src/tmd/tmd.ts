@@ -1,9 +1,9 @@
-import { headerStruct, HeaderData }  from './structs/header';
-import { objectTableStruct, ObjectTableData } from './structs/object-table';
+import { headerStruct, HeaderData }  from './structs/header.struct';
+import { objectTableStruct, ObjectTableData } from './structs/object-table.struct';
 import { Primitive } from './primitive';
-import { primitiveStruct, PrimitiveData } from './structs/primitive';
-import { normalStruct, NormalData } from './structs/normal';
-import { vertexStruct, VertexData } from './structs/vertex';
+import { primitiveStruct, PrimitiveData } from './structs/primitive.struct';
+import { normalStruct, NormalData } from './structs/normal.struct';
+import { vertexStruct, VertexData } from './structs/vertex.struct';
 
 export interface TMDObject {
   primitives: Primitive[];
@@ -17,6 +17,8 @@ export class TMD {
   header: HeaderData;
   objectInfos: ObjectTableData[];
   objects: TMDObject[];
+
+  private _byteLength: number;
 
   constructor(arrayBuffer: ArrayBuffer, startOffset = 0) {
     this.header = headerStruct.createObject<HeaderData>(arrayBuffer, startOffset, true);
@@ -32,6 +34,14 @@ export class TMD {
 
       this.objects.push(object);
     });
+
+    const lastObject = this.objects[this.objects.length - 1];
+    const offsetToLastFileEntry = lastObject?.normals[lastObject.normals.length - 1].offsetTo.unused;
+    this._byteLength = offsetToLastFileEntry + 2 - startOffset; // add byte length of final file entry
+  }
+
+  get byteLength(): number {
+    return this._byteLength;
   }
 
   getPrimitives(object: ObjectTableData, arrayBuffer: ArrayBuffer): Primitive[] {

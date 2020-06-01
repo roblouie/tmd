@@ -97,11 +97,11 @@ export class TIM {
 
   createImageData(clutX ?: number, clutY ?: number): ImageData {
 
-    if (this.hasCLUT && this.clutHeader.dataWidth === 16) {
+    if (this.hasCLUT && this.pixelMode === TIMPixelMode.FOUR_BIT_CLUT) {
       return this.create4BitImageData(clutX, clutY);
     }
 
-    else if (this.hasCLUT && this.clutHeader.dataWidth === 256) {
+    else if (this.hasCLUT && this.pixelMode === TIMPixelMode.EIGHT_BIT_CLUT) {
       return this.create8BitImageData(clutX, clutY);
     }
 

@@ -9,6 +9,9 @@ import { VRAM } from '../vram/vram';
 import { Primitive } from '../tmd/primitive';
 import { PrimitiveType } from '../tmd/primitive-type.enum';
 import { TIM } from '../tim/tim';
+import { NoLightTexturedSolidConverter } from './primitives/no-light-textured-solid.converter';
+import { NoLightNoTextureSolidConverter } from './primitives/no-light-no-texture-solid.converter';
+import { FlatNoTextureGradientConverter } from './primitives/flat-no-texture-gradient.converter';
 
 export class TMDToThreeJS {
 
@@ -41,17 +44,20 @@ export class TMDToThreeJS {
     const meshArray = [];
 
     tmd.objects.forEach(object => {
+      const materialTracker = new MaterialTracker();
       const geometry = new THREE.Geometry();
-      const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
       geometry.vertices = object.vertices.map(vertex => new THREE.Vector3(vertex.x, -vertex.y, vertex.z));
 
       object.primitives.forEach(primitive => {
-        this.populateGeometry(primitive, geometry, object, 0);
+        const materialIndex = materialTracker.createMaterialWithoutTexture(primitive);
+
+        this.populateGeometry(primitive, geometry, object, materialIndex);
       });
 
       geometry.faceVertexUvs[0] = []; // Clear the UVs that were brought over from PS1 since we don't have a texture;
 
-      meshArray.push(new THREE.Mesh(geometry, material));
+      meshArray.push(new THREE.Mesh(geometry, materialTracker.objectMaterials));
     });
 
     return meshArray;
@@ -83,6 +89,9 @@ export class TMDToThreeJS {
       case PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_SOLID:
         geometry.faces.push(FlatNoTextureSolidConverter.GetFace(primitive.packetData, object.normals, materialIndex));
         break;
+      case PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_GRADIENT:
+        geometry.faces.push(FlatNoTextureGradientConverter.GetFace(primitive.packetData, object.normals, materialIndex));
+        break;
       case PrimitiveType.THREE_SIDED_GOURAD_NO_TEXTURE_SOLID:
         geometry.faces.push(GouradNoTextureSolidConverter.GetFace(primitive.packetData, object.normals, materialIndex));
         break;
@@ -94,6 +103,12 @@ export class TMDToThreeJS {
         geometry.faces.push(GouradTexturedConverter.GetFace(primitive.packetData, object.normals, materialIndex));
         geometry.faceVertexUvs[0].push(this.getUVs(primitive));
         break;
+      case PrimitiveType.THREE_SIDED_NO_LIGHT_NO_TEXTURE_SOLID:
+        geometry.faces.push(NoLightNoTextureSolidConverter.GetFace(primitive.packetData, materialIndex));
+        break;
+      case PrimitiveType.THREE_SIDED_NO_LIGHT_TEXTURE_SOLID:
+        geometry.faces.push(NoLightTexturedSolidConverter.GetFace(primitive.packetData, materialIndex));
+        geometry.faceVertexUvs[0].push(this.getUVs(primitive));
     }
   }
 

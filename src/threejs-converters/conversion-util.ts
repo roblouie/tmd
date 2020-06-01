@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { NormalData } from '../tmd/structs/normal';
+import { NormalData } from '../tmd/structs/normal.struct';
 
 export const conversionUtil = {
   materials: [

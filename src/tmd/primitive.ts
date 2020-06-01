@@ -1,13 +1,14 @@
 import { flatNoTextureSolidStruct } from './structs/primitives/flat-no-texture-solid.struct';
-import { flatNoTextureGradientStruct } from './structs/primitives/flat-no-texture-gradient.struct';
+import { flatNoTextureGradientStruct, FlatNoTextureGradientData } from './structs/primitives/flat-no-texture-gradient.struct';
 import { gouradNoTextureSolidStruct } from './structs/primitives/gourad-no-texture-solid.struct';
 import { flatTexturedStruct, FlatTexturedData } from './structs/primitives/flat-textured';
-import { PrimitiveData } from './structs/primitive';
+import { PrimitiveData } from './structs/primitive.struct';
 import { PrimitiveType } from './primitive-type.enum';
 import { gouradTexturedStruct, GouradTexturedData } from './structs/primitives/gourad-textured';
 import { lineSolidStruct, LineSolidData } from './structs/primitives/lines/line-solid.struct';
 import { lineGradientStruct, LineGradientData } from './structs/primitives/lines/line-gradient';
 import { noLightNoTextureSolidStruct, NoLightNoTextureSolidData } from './structs/primitives/no-light-no-texture-solid.struct';
+import { noLightTexturedSolidStruct, NoLightTexturedSolidData } from './structs/primitives/no-light-textured-solid.struct';
 
 export class Primitive {
   primitiveData: PrimitiveData;
@@ -167,8 +168,8 @@ export class Primitive {
 
       // Flat shading no texture gradient color
       else if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Gradient') {
-        this.packetDataType = '3_SIDED_FLAT_NO_TEXTURE_GRADIENT';
-        this.packetData = flatNoTextureGradientStruct.createObject(arrayBuffer, this.primitiveData.endPosition + 1, true);
+        this.packetDataType = PrimitiveType.THREE_SIDED_FLAT_NO_TEXTURE_GRADIENT;
+        this.packetData = flatNoTextureGradientStruct.createObject<FlatNoTextureGradientData>(arrayBuffer, this.primitiveData.endPosition + 1, true);
       }
 
       // Gourad shading no texture gradient color
@@ -239,7 +240,8 @@ export class Primitive {
 
       // Solid texture
       else if (this.colorMode === 'Solid' && this.isTextured) {
-        this.packetDataType = '3_SIDED_NO_LIGHT_TEXTURE_SOLID';
+        this.packetDataType = PrimitiveType.THREE_SIDED_NO_LIGHT_TEXTURE_SOLID;
+        this.packetData = noLightTexturedSolidStruct.createObject<NoLightTexturedSolidData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }
 
       // Gradient texture

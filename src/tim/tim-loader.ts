@@ -28,23 +28,26 @@ export class TIMLoader {
     let offset = 0;
 
     while (offset < arrayBuffer.byteLength - this.MinimumTIMSize) {
-      const hasTIMHeader = TIM.FileID === dataView.getUint32(offset, true);
+      const hasID = TIM.FileID === dataView.getUint32(offset, true);
       const hasValidFlag = dataView.getUint32(offset + 4, true) <= maxFlagValue;
 
-      if (hasTIMHeader && hasValidFlag) {
+      if (hasID && hasValidFlag) {
         try {
           const tim = new TIM(arrayBuffer, offset);
 
-          // As long as we found some actual pixels but not too many, add to TIM array. Helps eliminate false positives.
-          if (tim.pixelData.byteLength > 0 && tim.pixelDataHeader.dataHeight <= 256 && tim.texturePage < 32 && Number.isInteger(tim.texturePage)) {
-            tims.push(tim);
-          }
+          const hasValidPixels = tim.pixelData.byteLength > 0 && tim.pixelDataHeader.dataHeight <= 256;
+          const hasValidTexturePage = hasValidPixels && tim.texturePage < 32 && Number.isInteger(tim.texturePage);
 
-          offset += tim.byteLength;
+          if (hasValidPixels && hasValidTexturePage) {
+            tims.push(tim);
+            offset += tim.byteLength;
+            
+          } else {
+            offset++;
+          }   
         } catch(error) {
           offset++;
         }
-
       } else {
         offset++;
       }
