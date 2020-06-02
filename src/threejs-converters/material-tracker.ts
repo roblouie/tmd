@@ -53,7 +53,7 @@ export class MaterialTracker {
   }
 
   private setNonTexturedMaterial(primitive: Primitive) {
-    if (!this.nonTexturedIndex) {
+    if (this.nonTexturedIndex === undefined) {
       this.nonTexturedIndex = this.materials.length;
 
       if (primitive.isLightCalculated) {

@@ -4,8 +4,8 @@ import { TMD } from "./tmd/tmd";
 import { VRAM } from "./vram/vram";
 import { TMDToThreeJS } from './threejs-converters/tmd-to-threejs';
 import { TIM } from './tim/tim';
-import { timLoader } from './tim/tim-loader';
-import { tmdLoader } from './tmd/tmd-loader';
+import { timLoader } from './loaders/tim-loader';
+import { tmdLoader } from './loaders/tmd-loader';
 
 //THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 const renderer = new THREE.WebGLRenderer(); 
