@@ -1,9 +1,10 @@
 import { TIM } from "../tim/tim";
+import { TIMPixelMode } from '../tim/tim-pixel-modes.enum';
 
 // TIM assets are often packed together in one file, either in one .tim file with multiple tims inside,
 // or in larger packaged data. This class will pull multiple tims out of those files.
 export class TIMLoader {
-  readonly MinimumTIMSize = 16;
+  private readonly MinimumTIMSize = 16;
   private readonly MaxFlagValue = 0b1111;
 
   getTIMsFromTIMFile(arrayBuffer: ArrayBuffer): TIM[] {
@@ -43,19 +44,19 @@ export class TIMLoader {
 
   checkForTIM(dataView: DataView, offset: number): TIM | undefined {
     const hasID = TIM.FileID === dataView.getUint32(offset, true);
-    const hasValidFlag = dataView.getUint32(offset + 4, true) <= this.MaxFlagValue;
 
-    if (hasID && hasValidFlag) {
+    if (hasID) {
       try {
         const tim = new TIM(dataView.buffer, offset);
 
-        const hasValidPixels = tim.pixelData.byteLength > 0 && tim.pixelDataHeader.dataHeight <= 256;
-        const hasValidTexturePage = hasValidPixels && tim.texturePage < 32 && Number.isInteger(tim.texturePage);
+        const hasValidPixels = tim.pixelData.byteLength > 0 && tim.pixelDataHeader.dataHeight <= 512;
+        const hasValidTexturePage = hasValidPixels && tim.texturePage < 32;
 
         if (hasValidPixels && hasValidTexturePage) {
           return tim;
         }
       } catch (error) {
+        //console.error(error);
         // Errors parsing means this probably isn't a valid TIM
       }
     }

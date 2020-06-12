@@ -20,9 +20,16 @@ export class TMD {
 
   private _byteLength: number;
 
+  private readonly MaxPrimitivesAllowed = 10000;
+  private readonly MaxVerticesAllowed = 40000;
+  private readonly MaxNormalsAllowed = 40000;
+
   constructor(arrayBuffer: ArrayBuffer, startOffset = 0) {
     this.header = headerStruct.createObject<HeaderData>(arrayBuffer, startOffset, true);
     this.objectInfos = objectTableStruct.createArray<ObjectTableData>(arrayBuffer, this.header.nextOffset, this.header.numberOfObjects, true);
+
+    this.checkObjectTableAccuracy();
+
     this.objects = [];
 
     this.objectInfos.forEach(objectInfo => {
@@ -44,7 +51,7 @@ export class TMD {
     return this._byteLength;
   }
 
-  getPrimitives(object: ObjectTableData, arrayBuffer: ArrayBuffer): Primitive[] {
+  private getPrimitives(object: ObjectTableData, arrayBuffer: ArrayBuffer): Primitive[] {
     const objectPrimitives = [];
     let offset = this.header.nextOffset + object.primitivesStart;
 
@@ -57,5 +64,21 @@ export class TMD {
     }
 
     return objectPrimitives;
+  }
+
+  private checkObjectTableAccuracy() {
+    this.objectInfos.forEach(objectInfo => {
+      if (objectInfo.primitivesCount > this.MaxPrimitivesAllowed) {
+        throw new Error(`Invalid Primitive Count: ${objectInfo.primitivesCount}`);
+      }
+
+      if (objectInfo.verticesCount > this.MaxVerticesAllowed) {
+        throw new Error(`Invalid Vertices Count: ${objectInfo.verticesCount}`);
+      }
+
+      if (objectInfo.normalsCount > this.MaxNormalsAllowed) {
+        throw new Error(`Invalid Normals Count: ${objectInfo.normalsCount}`);
+      }
+    })
   }
 }

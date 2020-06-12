@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { conversionUtil } from '../conversion-util';
-import { GouradNoTextureSolidData } from '../../tmd/structs/primitives/gourad-no-texture-solid.struct';
-import { NormalData } from '../../tmd/structs/normal.struct';
+import { conversionUtil } from '../../conversion-util';
+import { GouradNoTextureSolidData } from '../../../tmd/structs/primitives/three-sided/gourad-no-texture-solid.struct';
+import { NormalData } from '../../../tmd/structs/normal.struct';
 
 export const GouradNoTextureSolidConverter = {
 

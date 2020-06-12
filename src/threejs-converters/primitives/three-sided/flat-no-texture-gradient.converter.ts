@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
-import { conversionUtil } from '../conversion-util';
-import { NormalData } from '../../tmd/structs/normal.struct';
-import { FlatNoTextureGradientData } from '../../tmd/structs/primitives/flat-no-texture-gradient.struct';
+import { conversionUtil } from '../../conversion-util';
+import { NormalData } from '../../../tmd/structs/normal.struct';
+import { FlatNoTextureGradientData } from '../../../tmd/structs/primitives/three-sided/flat-no-texture-gradient.struct';
 
 export const FlatNoTextureGradientConverter = {
 

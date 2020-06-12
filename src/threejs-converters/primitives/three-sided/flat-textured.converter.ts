@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { FlatTexturedData } from '../../tmd/structs/primitives/flat-textured';
-import { NormalData } from '../../tmd/structs/normal.struct';
+import { FlatTexturedData } from '../../../tmd/structs/primitives/three-sided/flat-textured';
+import { NormalData } from '../../../tmd/structs/normal.struct';
 
 export const FlatTexturedConverter = {
 

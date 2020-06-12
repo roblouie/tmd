@@ -1,14 +1,18 @@
-import { flatNoTextureSolidStruct } from './structs/primitives/flat-no-texture-solid.struct';
-import { flatNoTextureGradientStruct, FlatNoTextureGradientData } from './structs/primitives/flat-no-texture-gradient.struct';
-import { gouradNoTextureSolidStruct } from './structs/primitives/gourad-no-texture-solid.struct';
-import { flatTexturedStruct, FlatTexturedData } from './structs/primitives/flat-textured';
+import { flatNoTextureSolidStruct } from './structs/primitives/three-sided/flat-no-texture-solid.struct';
+import { flatNoTextureGradientStruct, FlatNoTextureGradientData } from './structs/primitives/three-sided/flat-no-texture-gradient.struct';
+import { gouradNoTextureSolidStruct } from './structs/primitives/three-sided/gourad-no-texture-solid.struct';
+import { flatTexturedStruct, FlatTexturedData } from './structs/primitives/three-sided/flat-textured';
 import { PrimitiveData } from './structs/primitive.struct';
 import { PrimitiveType } from './primitive-type.enum';
-import { gouradTexturedStruct, GouradTexturedData } from './structs/primitives/gourad-textured';
+import { gouradTexturedStruct, GouradTexturedData } from './structs/primitives/three-sided/gourad-textured';
 import { lineSolidStruct, LineSolidData } from './structs/primitives/lines/line-solid.struct';
 import { lineGradientStruct, LineGradientData } from './structs/primitives/lines/line-gradient';
-import { noLightNoTextureSolidStruct, NoLightNoTextureSolidData } from './structs/primitives/no-light-no-texture-solid.struct';
-import { noLightTexturedSolidStruct, NoLightTexturedSolidData } from './structs/primitives/no-light-textured-solid.struct';
+import { noLightNoTextureSolidStruct, NoLightNoTextureSolidData } from './structs/primitives/three-sided/no-light-no-texture-solid.struct';
+import { noLightTexturedSolidStruct, NoLightTexturedSolidData } from './structs/primitives/three-sided/no-light-textured-solid.struct';
+import { noLightTexturedSolidStruct as fourSidedNoLightTexturedSolidStruct, NoLightTexturedSolidData as FourSidedNoLightTexturedSolidData } from './structs/primitives/four-sided/no-light-textured-solid.struct';
+import { fourSidedFlatTexturedNoColorStruct, FourSidedFlatTexturedNoColorData } from './structs/primitives/four-sided/flat-textured-no-color.struct';
+import { FourSidedNoLightNoTextureSolidData, fourSidedNoLightNoTextureSolidStruct } from './structs/primitives/four-sided/no-light-no-texture-solid.struct';
+
 
 export class Primitive {
   primitiveData: PrimitiveData;
@@ -82,14 +86,14 @@ export class Primitive {
   // Texture helpers, consider moving into packet data types or something...not sure these belong direclty in primitive
   getTextureXYPositionInVRAM() {
     if (this.isTextured && this.packetData) {
-      if (this.texturePage < 16) {
+      if (this.texturePage! < 16) {
         return { 
-          x: this.texturePage * 64,
+          x: this.texturePage! * 64,
           y: 0
         }
       } else {
         return {
-          x: (this.texturePage - 16) * 64,
+          x: (this.texturePage! - 16) * 64,
           y: 256
         }
       }
@@ -138,11 +142,11 @@ export class Primitive {
         return 4;
       }
 
-      if (colorMode === 1) {
+      else if (colorMode === 1) {
         return 8;
       }
 
-      if (colorMode === 2) {
+      else if (colorMode === 2) {
         return 16;
       }
     }
@@ -175,6 +179,7 @@ export class Primitive {
       // Gourad shading no texture gradient color
       else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '3_SIDED_GOURAD_NO_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 3_SIDED_GOURAD_NO_TEXTURE_GRADIENT');
       }
 
       // Flat shading texture no color
@@ -196,31 +201,37 @@ export class Primitive {
       // Flat shading no texture solid color
       if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Solid') {
         this.packetDataType = '4_SIDED_FLAT_NO_TEXTURE_SOLID';
+        console.log('Unimplemented primitive: 4_SIDED_FLAT_NO_TEXTURE_SOLID');
       }
 
       // Gourad shading no texture solid color
       else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Solid') {
         this.packetDataType = '4_SIDED_GOURAD_NO_TEXTURE_SOLID';
+        console.log('Unimplemented primitive: 4_SIDED_GOURAD_NO_TEXTURE_SOLID');
       }
 
       // Flat shading no texture gradient color
       else if (this.shading === 'Flat' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '4_SIDED_FLAT_NO_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 4_SIDED_FLAT_NO_TEXTURE_GRADIENT');
       }
 
       // Gourad shading no texture gradient color
       else if (this.shading === 'Gourad' && !this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '4_SIDED_GOURAD_NO_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 4_SIDED_GOURAD_NO_TEXTURE_GRADIENT');
       }
 
       // Flat shading texture no color
       else if (this.shading === 'Flat' && this.isTextured) {
-        this.packetDataType = '4_SIDED_FLAT_TEXTURE';
+        this.packetDataType = PrimitiveType.FOUR_SIDED_FLAT_TEXTURE_NO_COLOR;
+        this.packetData = fourSidedFlatTexturedNoColorStruct.createObject<FourSidedFlatTexturedNoColorData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }
 
       // Gourad shading texture no color
       else if (this.shading === 'Gourad' && this.isTextured) {
         this.packetDataType = '4_SIDED_GOURAD_TEXTURE';
+        console.log('Unimplemented primitive: 4_SIDED_GOURAD_TEXTURE');
       }
     
 
@@ -236,6 +247,7 @@ export class Primitive {
       // Gradient no texture
       else if (!this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '3_SIDED_NO_LIGHT_NO_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 3_SIDED_NO_LIGHT_NO_TEXTURE_GRADIENT');
       }
 
       // Solid texture
@@ -247,6 +259,7 @@ export class Primitive {
       // Gradient texture
       else if (this.colorMode === 'Gradient' && this.isTextured) {
         this.packetDataType = '3_SIDED_NO_LIGHT_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 3_SIDED_NO_LIGHT_TEXTURE_GRADIENT');
       }
 
 
@@ -255,22 +268,26 @@ export class Primitive {
 
       // Solid no texture
       if (!this.isTextured && this.colorMode === 'Solid') {
-        this.packetDataType = '4_SIDED_NO_TEXTURE_SOLID';
+        this.packetDataType = PrimitiveType.FOUR_SIDED_NO_LIGHT_NO_TEXTURE_SOLID;
+        this.packetData = fourSidedNoLightNoTextureSolidStruct.createObject<FourSidedNoLightNoTextureSolidData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }
 
       // Gradient no texture
       else if (!this.isTextured && this.colorMode === 'Gradient') {
         this.packetDataType = '4_SIDED_NO_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 4_SIDED_NO_TEXTURE_GRADIENT');
       }
 
       // Solid texture
       else if (this.colorMode === 'Solid' && this.isTextured) {
-        this.packetDataType = '4_SIDED_TEXTURE_SOLID';
+        this.packetDataType = PrimitiveType.FOUR_SIDED_NO_LIGHT_TEXTURED_SOLID;
+        this.packetData = fourSidedNoLightTexturedSolidStruct.createObject<FourSidedNoLightTexturedSolidData>(arrayBuffer, this.primitiveData.nextOffset, true);
       }
 
       // Gradient texture
       else if (this.colorMode === 'Gradient' && this.isTextured) {
         this.packetDataType = '4_SIDED_TEXTURE_GRADIENT';
+        console.log('Unimplemented primitive: 4_SIDED_TEXTURE_GRADIENT');
       }
 
 
@@ -290,6 +307,7 @@ export class Primitive {
     // --- 3 Dimensional Sprite ---
     } else if (this.codeType === 'Sprite') {
       // Unknown, this changes how the options work though, so possible refactor to options when type is sprite
+      console.log('Unimplemented primitive: Sprite');
     }
 
   }

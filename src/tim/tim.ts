@@ -13,7 +13,6 @@ export class TIM {
 
   header: TimHeaderData;
   clutHeader: SectionHeaderData;
-  clutPixels: PSXColor[];
   pixelDataHeader: SectionHeaderData;
   pixelData: Uint16Array;
 
@@ -29,8 +28,7 @@ export class TIM {
     if (this.hasCLUT) {
       this.clutHeader = sectionHeaderStruct.createObject<SectionHeaderData>(arrayBuffer, this.header.nextOffset, true);
 
-
-
+     this.checkCLUTAccuracy();
 
       pixelDataStart = this.header.nextOffset + this.clutHeader.sectionByteLength;
 
@@ -49,16 +47,12 @@ export class TIM {
           currentRow++;
         }
       }
-      
-      // this.clutPixels = [];
-      // const dataView = new DataView(arrayBuffer);
-      // for (let i = this.clutHeader.nextOffset; i < pixelDataStart; i += 2) {
-      //   const clutPixel = PSXColor.FromSixteenBitValue(dataView.getUint16(i, true));
-      //   this.clutPixels.push(clutPixel);
-      // }
     }
 
     this.pixelDataHeader = sectionHeaderStruct.createObject<SectionHeaderData>(arrayBuffer, pixelDataStart, true);
+
+    this.checkPixelDataAccurace();
+
     const pixelDataSizeInBytes = this.pixelDataHeader.dataWidth * this.pixelDataHeader.dataHeight * 2;
     const pixelDataEnd = this.pixelDataHeader.nextOffset + pixelDataSizeInBytes;
     this.pixelData = new Uint16Array(arrayBuffer.slice(this.pixelDataHeader.nextOffset, pixelDataEnd));
@@ -78,10 +72,25 @@ export class TIM {
   }
 
   get texturePage(): number {
-    const xPage = this.pixelDataHeader.vramX / VRAM.TEXTURE_PAGE_NATIVE_WIDTH;
-    const yPage = this.pixelDataHeader.vramY / VRAM.TEXTURE_PAGE_NATIVE_HEIGHT;
+    const xPage = Math.floor(this.pixelDataHeader.vramX / VRAM.TEXTURE_PAGE_NATIVE_WIDTH);
+    const yPage = Math.floor(this.pixelDataHeader.vramY / VRAM.TEXTURE_PAGE_NATIVE_HEIGHT);
 
     return xPage + yPage * 16;
+  }
+
+  get bitsPerPixel(): number | undefined {
+    switch (this.pixelMode) {
+      case TIMPixelMode.FOUR_BIT_CLUT:
+        return 4;
+      case TIMPixelMode.EIGHT_BIT_CLUT:
+        return 8;
+      case TIMPixelMode.FIFTEEN_BIT_CLUT:
+        return 16;
+      case TIMPixelMode.TWENTY_FOUR_BIT_CLUT:
+        return 24;
+      case TIMPixelMode.MIXED:
+        return undefined;
+    }
   }
 
   getCLUTFromVRAMXY(vramX: number, vramY: number) {
@@ -95,14 +104,41 @@ export class TIM {
     }
   }
 
-  createImageData(clutX ?: number, clutY ?: number): ImageData {
+  createImageDataFromCLUTRow(rowNumber: number): ImageData {
+    let imageData: ImageData;
 
     if (this.hasCLUT && this.pixelMode === TIMPixelMode.FOUR_BIT_CLUT) {
-      return this.create4BitImageData(clutX, clutY);
+      const clut = this.cluts[rowNumber];
+      imageData = this.create4BitImageData(clut);
     }
 
     else if (this.hasCLUT && this.pixelMode === TIMPixelMode.EIGHT_BIT_CLUT) {
-      return this.create8BitImageData(clutX, clutY);
+      const clut = this.cluts[rowNumber];
+      imageData = this.create8BitImageData(clut);
+    }
+
+    return imageData!;
+  }
+
+  createImageData(clutX ?: number, clutY ?: number): ImageData | undefined {
+    if (this.hasCLUT) {
+      if (clutX == undefined) {
+        clutX = this.clutHeader.vramX;
+      }
+
+      if (clutY == undefined) {
+        clutY = this.clutHeader.vramY;
+      }
+    }
+
+    if (this.hasCLUT && this.pixelMode === TIMPixelMode.FOUR_BIT_CLUT) {
+      const clut = this.getCLUTFromVRAMXY(clutX!, clutY!);
+      return this.create4BitImageData(clut);
+    }
+
+    else if (this.hasCLUT && this.pixelMode === TIMPixelMode.EIGHT_BIT_CLUT) {
+      const clut = this.getCLUTFromVRAMXY(clutX!, clutY!);
+      return this.create8BitImageData(clut);
     }
 
     else if (!this.hasCLUT && this.pixelMode === TIMPixelMode.FIFTEEN_BIT_CLUT) {
@@ -119,20 +155,7 @@ export class TIM {
   }
 
 
-  create4BitImageData(clutX?: number, clutY?: number): ImageData {
-    // Use the first CLUT if no clut X and Y is passed in.
-    if (this.hasCLUT) {
-      if (clutX == undefined) {
-        clutX = this.clutHeader.vramX;
-      }
-
-      if (clutY == undefined) {
-        clutY = this.clutHeader.vramY;
-      }
-    }
-
-    const clut = this.getCLUTFromVRAMXY(clutX, clutY);
-
+  create4BitImageData(clut: PSXColor[]): ImageData {
     const imageData = new ImageData(this.pixelDataHeader.dataWidth * TIM.FourBitMultiplier, this.pixelDataHeader.dataHeight);
     this.pixelData.forEach((pixelData, index) => {
       const imageDataIndex = index * 16;
@@ -150,21 +173,7 @@ export class TIM {
     return imageData;
   }
 
-  create8BitImageData(clutX?: number, clutY?: number): ImageData {
-
-    // Use the first CLUT if no clut X and Y is passed in.
-    if (this.hasCLUT) {
-      if (clutX == undefined) {
-        clutX = this.clutHeader.vramX;
-      }
-
-      if (clutY == undefined) {
-        clutY = this.clutHeader.vramY;
-      }
-    }
-
-    const clut = this.getCLUTFromVRAMXY(clutX, clutY);
-
+  create8BitImageData(clut: PSXColor[]): ImageData {
     const imageData = new ImageData(this.pixelDataHeader.dataWidth * TIM.EightBitMultiplier, this.pixelDataHeader.dataHeight);
     this.pixelData.forEach((pixelData, index) => {
       const imageDataIndex = index * 8;
@@ -215,5 +224,37 @@ export class TIM {
     imageData.data[imageDataIndex + 1] = color.green;
     imageData.data[imageDataIndex + 2] = color.blue;
     imageData.data[imageDataIndex + 3] = color.alpha;
+  }
+
+  private checkCLUTAccuracy() {
+    if (this.clutHeader.sectionByteLength > VRAM.VRAM_BYTE_WIDTH * VRAM.VRAM_BYTE_HEIGHT) {
+      throw new Error(`Invalid CLUT Section Byte Size, ${this.clutHeader.sectionByteLength}`);
+    }
+
+    if (this.clutHeader.vramY > 512 || this.clutHeader.vramX > 1024) {
+      throw new Error(`Invalid CLUT Position, X: ${this.clutHeader.vramX}, Y: ${this.clutHeader.vramY}`)
+    }
+
+    if (this.clutHeader.dataWidth > VRAM.VRAM_BYTE_HEIGHT || this.clutHeader.dataHeight > VRAM.VRAM_BYTE_HEIGHT) {
+      throw new Error(`Invalid CLUT Size, Width: ${this.clutHeader.dataWidth}, Height: ${this.clutHeader.dataHeight}`)
+    }
+  }
+
+  private checkPixelDataAccurace() {
+    if ((this.bitsPerPixel === 4 || this.bitsPerPixel === 8) && !this.hasCLUT) {
+      throw new Error(`Invalid structure. No palette found for ${this.bitsPerPixel} image.`)
+    }
+    
+    if (this.pixelDataHeader.sectionByteLength > VRAM.VRAM_BYTE_WIDTH * VRAM.VRAM_BYTE_HEIGHT) {
+      throw new Error(`Invalid Pixel Data Section Byte Size, ${this.pixelDataHeader.sectionByteLength}`);
+    }
+
+    if (this.pixelDataHeader.vramX > VRAM.VRAM_NATIVE_WIDTH || this.pixelDataHeader.vramY > VRAM.VRAM_BYTE_HEIGHT) {
+      throw new Error(`Invalid Pixel Data Position, X: ${this.pixelDataHeader.vramX}, Y: ${this.pixelDataHeader.vramY}`);
+    }
+
+    if (this.pixelDataHeader.dataWidth > VRAM.VRAM_BYTE_WIDTH || this.pixelDataHeader.dataHeight > VRAM.VRAM_BYTE_WIDTH) {
+      throw new Error(`Invalid Pixel Data Size, Width: ${this.pixelDataHeader.dataWidth}, Height: ${this.pixelDataHeader.dataHeight}`);
+    }
   }
 }

@@ -32,8 +32,8 @@ window.onload = async () => {
   timParseButton.onclick = onTimParse;
 
   //document.onkeyup = changeObject();
-  //const timData = await openFile('assets/DINO.TIM');
-  //tims = timLoader.getTIMsFromTIMFile(timData);
+  const timData = await openFile('assets/DINO.TIM');
+  tims = timLoader.getTIMsFromTIMFile(timData);
   
 
   // const leftmostX = tims.map(tim => tim.pixelDataHeader.vramX).sort()[0];
@@ -47,11 +47,11 @@ window.onload = async () => {
 
   // console.log(tims[0]);
 
-  //const tmdData = await openFile('assets/DINOBASE.TMD');
+  const tmdData = await openFile('assets/DINOBASE.TMD');
   // // const vramData = await openFile('assets/vram.bin');
   // // vram = new VRAM(vramData);
-  //const tmd = new TMD(tmdData);
-  //drawTMD(tmd);
+  const tmd = new TMD(tmdData);
+  drawTMD(tmd);
   // //const test2 = test[3].createImageData();
   
 }
@@ -158,7 +158,7 @@ function drawTMD(tmd) {
   
 
   const converter = new TMDToThreeJS();
-  meshes = converter.convertWithTMDOnly(tmd);
+  meshes = converter.convertWithTMDAndTIM(tmd, tims);
 
   meshes[0].geometry.scale(0.2, 0.2, 0.2);
   meshes.forEach(mesh => scene.add(mesh));

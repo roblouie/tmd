@@ -44,4 +44,14 @@ export class PSXColor {
 
     return color;
   }
+
+  static IsValueTransparent(sixteenBitColorValue: number) {
+    const red = sixteenBitColorValue & 0b11111;
+    const green = (sixteenBitColorValue & 0b1111100000) >> 5;
+    const blue = (sixteenBitColorValue & 0b111110000000000) >> 10;
+    const alphaFlag = (sixteenBitColorValue & 0b1000000000000000) >> 15;
+
+    // TODO: Right now just does 100% alpha or 0. PSX supports semi transparency too, which should be revisited.
+    return alphaFlag === 0 && red === 0 && green === 0 && blue === 0;
+  }
 }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Primitive } from '../tmd/primitive';
 import { VRAM } from '../vram/vram';
 import { TIM } from '../tim/tim';
+import { ExpandedTexturePage } from './expanded-texture-page';
 
 export class MaterialTracker {
   private materials: THREE.Material[];
@@ -31,9 +32,24 @@ export class MaterialTracker {
   }
 
   createMaterialFromVRAMAndGetIndex(primitive: Primitive, vram: VRAM): number {
-    if (primitive.isTextured) {
-      const textureImageData = this.getTextureFromVRAM(vram, primitive);
-      this.setTexturedMaterial(primitive, textureImageData);
+    if (primitive.isTextured && vram.vramData.length > 0) {
+      if (!this.isTextureAlreadySet(primitive.texturePage!, primitive.textureBitsPerPixel!)) {
+        const textureImageData = this.getTextureFromVRAM(vram, primitive);
+        this.setTexturedMaterial(primitive, textureImageData);
+      }
+    } else {
+      this.setNonTexturedMaterial(primitive);
+    }
+
+    return this.getMaterialIndex(primitive);
+  }
+
+  createMaterialFromExpandedTexturePageAndGetIndex(primitive: Primitive, expandedTexturePages: ExpandedTexturePage[]) {
+    if (primitive.isTextured && expandedTexturePages.length > 0) {
+      if (!this.isTextureAlreadySet(primitive.texturePage!, primitive.textureBitsPerPixel!)) {
+        const textureImageData = this.getTextureFromExpandedTexturePages(expandedTexturePages, primitive);
+        this.setTexturedMaterial(primitive, textureImageData!);
+      }
     } else {
       this.setNonTexturedMaterial(primitive);
     }
@@ -42,13 +58,15 @@ export class MaterialTracker {
   }
 
   createMaterialFromTIMAndGetIndex(primitive: Primitive, tims: TIM[]): number {
-    if (primitive.isTextured) {
-      const textureImageData = this.getTextureFromTIMs(tims, primitive);
-      this.setTexturedMaterial(primitive, textureImageData);
+    if (primitive.isTextured && tims.length > 0) {
+      if (!this.isTextureAlreadySet(primitive.texturePage!, primitive.textureBitsPerPixel!)) {
+        const textureImageData = this.getTextureFromTIMs(tims, primitive);
+        this.setTexturedMaterial(primitive, textureImageData!);
+      }
     } else {
       this.setNonTexturedMaterial(primitive);
     }
-    
+
     return this.getMaterialIndex(primitive);
   }
 
@@ -59,45 +77,55 @@ export class MaterialTracker {
       if (primitive.isLightCalculated) {
         this.materials.push(new THREE.MeshStandardMaterial({ vertexColors: true }));
       } else {
-        this.materials.push(new THREE.MeshBasicMaterial({ vertexColors: true }));
+        this.materials.push(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true }));
       }
-      
+
     }
   }
 
   private setTexturedMaterial(primitive: Primitive, textureImageData: ImageData) {
-    if (this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel) === undefined) {
-      
+    if (this.texturePages[primitive.texturePage!]?.bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel!) === undefined) {
+
       var texture = new THREE.DataTexture(textureImageData.data, textureImageData.width, textureImageData.height, THREE.RGBAFormat);
       const nextMaterialIndex = this.materials.length;
-      this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.set(primitive.textureBitsPerPixel, nextMaterialIndex);
+      this.texturePages[primitive.texturePage!].bitsPerPixelToMaterialIndex.set(primitive.textureBitsPerPixel!, nextMaterialIndex);
 
       let material: THREE.Material;
       if (primitive.isLightCalculated) {
-        material = new THREE.MeshStandardMaterial({ vertexColors: true, map: texture });
+        material = new THREE.MeshStandardMaterial({ vertexColors: true, map: texture, transparent: true, alphaTest: 0.3 });
       } else {
-        material = new THREE.MeshBasicMaterial({ vertexColors: true, map: texture });
+        material = new THREE.MeshBasicMaterial({ vertexColors: true, map: texture, transparent: true, alphaTest: 0.3 });
       }
 
       this.materials.push(material);
-    } 
+    }
   }
 
   private getTextureFromVRAM(vram: VRAM, primitive: Primitive): ImageData {
-    return vram.getTexturePageImageData(primitive.textureBitsPerPixel, primitive.texturePage, primitive.textureCLUTXPosition, primitive.textureCLUTYPosition);
+    console.log(`Texture Page: ${primitive.texturePage}, CLUT X: ${primitive.textureCLUTXPosition}, CLUT Y: ${primitive.textureCLUTYPosition}`);
+    return vram.getTexturePageImageData(primitive.textureBitsPerPixel!, primitive.texturePage!, primitive.textureCLUTXPosition, primitive.textureCLUTYPosition)!;
   }
 
-  private getTextureFromTIMs(tims: TIM[], primitive: Primitive): ImageData {
+  private getTextureFromTIMs(tims: TIM[], primitive: Primitive): ImageData | undefined {
     const timToUse = tims.find(tim => tim.texturePage === primitive.texturePage);
-    const textureImageData = timToUse.createImageData(primitive.textureCLUTXPosition, primitive.textureCLUTYPosition);
+    const textureImageData = timToUse?.createImageData(primitive.textureCLUTXPosition, primitive.textureCLUTYPosition);
     return textureImageData;
+  }
+
+  private getTextureFromExpandedTexturePages(expandedTexturePages: ExpandedTexturePage[], primitive: Primitive): ImageData {
+    const tpageToUse = expandedTexturePages.find(tpage => tpage.texturePage === primitive.texturePage);
+    return tpageToUse?.canvasContext.getImageData(0, 0, 256, 256)!;
   }
 
   private getMaterialIndex(primitive: Primitive): number {
     if (primitive.isTextured) {
-      return this.texturePages[primitive.texturePage].bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel);
+      return this.texturePages[primitive.texturePage!].bitsPerPixelToMaterialIndex.get(primitive.textureBitsPerPixel!)!;
     } else {
       return this.nonTexturedIndex;
     }
+  }
+
+  private isTextureAlreadySet(texturePage: number, bitsPerPixel: number) {
+    return this.texturePages[texturePage]?.bitsPerPixelToMaterialIndex.get(bitsPerPixel) !== undefined;
   }
 }
